@@ -1,0 +1,200 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" type="text/css" href="{% static "admin/css/dashboard.css" %}">{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <!-- Customer Statistics Dashboard -->
+    <div class="dashboard-stats">
+        <h1>📊 Business Dashboard</h1>
+        
+        <div class="stats-grid">
+            <!-- Customer Statistics -->
+            <div class="stat-card customer-stats">
+                <h2>👥 Customer Statistics</h2>
+                <div class="stat-item">
+                    <span class="stat-number">{{ total_customers }}</span>
+                    <span class="stat-label">Total Customers</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ new_customers_this_month }}</span>
+                    <span class="stat-label">New This Month</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ active_customers }}</span>
+                    <span class="stat-label">Active (30 days)</span>
+                </div>
+                {% if top_customer %}
+                <div class="stat-item">
+                    <span class="stat-label">Top Customer:</span>
+                    <span class="stat-value">{{ top_customer.first_name }} {{ top_customer.last_name|default:top_customer.phone_number }}</span>
+                    <br>
+                    <small>{{ top_customer.total_orders }} orders, ₦{{ top_customer.total_spent|floatformat:0 }} spent</small>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Order Statistics -->
+            <div class="stat-card order-stats">
+                <h2>📦 Order Statistics</h2>
+                <div class="stat-item">
+                    <span class="stat-number">{{ today_orders }}</span>
+                    <span class="stat-label">Today's Orders</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">₦{{ today_revenue|floatformat:0 }}</span>
+                    <span class="stat-label">Today's Revenue</span>
+                </div>
+            </div>
+
+            <!-- Inventory Statistics -->
+            <div class="stat-card inventory-stats">
+                <h2>📋 Inventory Statistics</h2>
+                <div class="stat-item">
+                    <span class="stat-number">{{ total_items }}</span>
+                    <span class="stat-label">Total Items</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ available_items }}</span>
+                    <span class="stat-label">Available</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ out_of_stock_items }}</span>
+                    <span class="stat-label">Out of Stock</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Default Admin Modules -->
+    {% if app_list %}
+        {% for app in app_list %}
+            <div class="app-{{ app.app_label }} module">
+                <table>
+                    <caption>
+                        <a href="{{ app.app_url }}" class="section" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">{{ app.name }}</a>
+                    </caption>
+                    {% for model in app.models %}
+                        <tr class="model-{{ model.object_name|lower }}">
+                            {% if model.admin_url %}
+                                <th scope="row"><a href="{{ model.admin_url }}"{% if model.add_url %} class="addlink"{% endif %}>{{ model.name }}</a></th>
+                            {% else %}
+                                <th scope="row">{{ model.name }}</th>
+                            {% endif %}
+
+                            {% if model.add_url %}
+                                <td><a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a></td>
+                            {% else %}
+                                <td>&nbsp;</td>
+                            {% endif %}
+
+                            {% if model.admin_url %}
+                                {% if model.view_only %}
+                                    <td><a href="{{ model.admin_url }}" class="viewlink">{% translate 'View' %}</a></td>
+                                {% else %}
+                                    <td><a href="{{ model.admin_url }}" class="changelink">{% translate 'Change' %}</a></td>
+                                {% endif %}
+                            {% else %}
+                                <td>&nbsp;</td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>{% translate "You don't have permission to view or edit anything." %}</p>
+    {% endif %}
+</div>
+
+<style>
+.dashboard-stats {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.dashboard-stats h1 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e9ecef;
+}
+
+.stat-card h2 {
+    color: #495057;
+    margin-bottom: 15px;
+    font-size: 18px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 8px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+    padding: 8px 0;
+}
+
+.stat-number {
+    font-size: 28px;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #28a745;
+}
+
+.customer-stats {
+    border-left: 4px solid #28a745;
+}
+
+.order-stats {
+    border-left: 4px solid #007bff;
+}
+
+.inventory-stats {
+    border-left: 4px solid #ffc107;
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

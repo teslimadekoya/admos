@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Login - Admos Place</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'dashboard/css/style.css' %}">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-box">
+            <h1 class="login-title">OTP Login</h1>
+            <p class="login-subtitle">Enter your phone number and OTP to log in</p>
+            
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1rem; padding: 0.5rem; border-radius: 4px; {% if message.tags == 'error' %}color: red; background: #ffebee;{% else %}color: green; background: #e8f5e8;{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <form action="{% url 'dashboard:otp_login' %}" method="post" class="login-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="phone_number">Admin Phone Number</label>
+                    <input type="tel" id="phone_number" name="phone_number" placeholder="e.g., +2348012345678" value="{{ phone_number }}" required>
+                </div>
+                
+                {% if otp_sent %}
+                    <div class="form-group">
+                        <label for="otp">OTP Code</label>
+                        <input type="text" id="otp" name="otp" placeholder="Enter 5-digit OTP" maxlength="5" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Verify OTP & Log In</button>
+                {% else %}
+                    <button type="submit" class="btn btn-primary btn-block">Send OTP</button>
+                {% endif %}
+            </form>
+            
+            <div class="login-footer">
+                <a href="{% url 'dashboard:login' %}" class="back-link">← Back to Regular Login</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

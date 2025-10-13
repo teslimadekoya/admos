@@ -1,0 +1,12 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Profile - Admos Place{% endblock %}
+{% block content %}
+<div class="profile-page">
+    <h2>My Profile</h2>
+    <div class="profile-card">
+        <p><strong>Name:</strong> {{ request.user.get_full_name|default:"Not set" }}</p>
+        <p><strong>Phone:</strong> {{ request.user.phone_number }}</p>
+        <p><strong>Role:</strong> {{ request.user.role }}</p>
+    </div>
+</div>
+{% endblock %}

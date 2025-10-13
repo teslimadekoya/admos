@@ -1,0 +1,191 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Manage Items - Admos Place{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+    <h1 class="page-title">Manage Items</h1>
+
+    <div class="search-controls">
+        <form method="get" class="search-form">
+            <div class="search-input-group">
+                <input type="text" name="search" placeholder="Search food items by name..." value="{{ search_query }}" class="search-input">
+                <select name="category" class="category-filter">
+                    <option value="all" {% if category_filter == 'all' %}selected{% endif %}>All</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="search-btn">
+                    <i class="fas fa-search"></i>
+                </button>
+                {% if search_query or category_filter %}
+                <a href="{% url 'dashboard:items' %}" class="clear-search-btn">
+                    <i class="fas fa-times"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <div class="action-bar">
+        {% if user.role != 'accountant' %}
+        <a href="{% url 'dashboard:add_item' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add New Item
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="table-container">
+            <table class="data-table items-table">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                        {% if user.role != 'accountant' %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            {% if item.image %}
+                                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="item-image">
+                            {% elif item.image_url %}
+                                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-image">
+                            {% else %}
+                                <div class="item-image-placeholder">
+                                    <i class="fas fa-utensils"></i>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.category.name }}</td>
+                        <td>₦ {{ item.price|floatformat:0 }}</td>
+                        <td>
+                            <span class="quantity-badge {% if item.portions == 0 %}out-of-stock{% elif item.portions <= 5 %}low-stock{% else %}in-stock{% endif %}">
+                                {{ item.quantity_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.portions > 0 %}
+                                <span class="status-badge status-active">Available</span>
+                            {% else %}
+                                <span class="status-badge status-draft">Out of Stock</span>
+                            {% endif %}
+                        </td>
+                        {% if user.role != 'accountant' %}
+                        <td>
+                            <a href="{% url 'dashboard:edit_item' item.id %}" class="btn btn-link edit-btn" title="Edit Item">
+                                <i class="fas fa-edit"></i>
+                                <span class="icon-fallback">Edit</span>
+                            </a>
+                            <form method="post" action="{% url 'dashboard:delete_item' item.id %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this item?')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-link delete-btn" title="Delete Item">
+                                    <i class="fas fa-trash-alt"></i>
+                                    <span class="icon-fallback">Delete</span>
+                                </button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if user.role == 'accountant' %}5{% else %}6{% endif %}" style="text-align: center; padding: 2rem;">
+                            {% if search_query or category_filter %}
+                                <p>No items found matching your filters.
+                                {% if search_query %}Search: "{{ search_query }}"{% endif %}
+                                {% if search_query and category_filter %} and {% endif %}
+                                {% if category_filter %}
+                                    {% for category in categories %}
+                                        {% if category.id|stringformat:"s" == category_filter %}Category: {{ category.name }}{% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                </p>
+                                <a href="{% url 'dashboard:items' %}" class="btn btn-secondary">Clear Filters</a>
+                            {% else %}
+                                <p>No items found. {% if user.role != 'accountant' %}<a href="{% url 'dashboard:add_item' %}" class="btn btn-primary">Add your first item</a>{% endif %}</p>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form when category filter changes
+    const categoryFilter = document.querySelector('.category-filter');
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', function() {
+            console.log('Category filter changed, submitting form');
+            this.form.submit();
+        });
+    }
+    
+    // Handle Enter key for search input
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                console.log('Enter pressed, submitting form');
+                this.form.submit();
+            }
+        });
+    }
+});
+
+</script>
+
+<style>
+.quantity-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    min-width: 40px;
+}
+
+.quantity-badge.in-stock {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.quantity-badge.low-stock {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.quantity-badge.out-of-stock {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-badge.status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.status-draft {
+    background: #f8d7da;
+    color: #721c24;
+}
+</style>
+{% endblock %}

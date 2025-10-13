@@ -1,0 +1,512 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Order Details - Admos Place{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+    <div class="page-header">
+        <h1 class="page-title">Order Details #{{ order.id }}</h1>
+        <a href="{% url 'dashboard:orders' %}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Back to Orders
+        </a>
+    </div>
+
+    <div class="dashboard-sections">
+        <div class="card">
+            <h3>Customer Information</h3>
+            <p><strong>Name:</strong> {{ order.user.first_name }} {{ order.user.last_name }}</p>
+            <p><strong>Phone:</strong> {{ order.user.phone_number }}</p>
+            <p><strong>Email:</strong> {{ order.user.email|default:"Not provided" }}</p>
+            <p><strong>Delivery Address:</strong> {{ order.delivery_address|default:"Not provided" }}</p>
+            <p><strong>Contact Phone:</strong> {{ order.contact_phone|default:"Not provided" }}</p>
+        </div>
+
+        <div class="card">
+            <h3>Order Information</h3>
+            <p><strong>Order ID:</strong> #{{ order.id }}</p>
+            <p><strong>Status:</strong> 
+                {% if order.status == 'Pending' %}
+                    <span class="status-badge status-pending">Pending</span>
+                {% elif order.status == 'On the Way' %}
+                    <span class="status-badge status-in-progress">On the Way</span>
+                {% elif order.status == 'Delivered' %}
+                    <span class="status-badge status-completed">Delivered</span>
+                {% endif %}
+            </p>
+            <p><strong>Order Date:</strong> {{ order.created_at|date:"M j, Y \a\t g:i A" }}</p>
+        </div>
+    </div>
+
+    <div class="card order-items-card">
+        <h3>Order Items by Bag</h3>
+        
+        {% for bag in order.bags.all %}
+        <div class="bag-section">
+            <div class="bag-header">
+                <h4>
+                    <i class="fas fa-shopping-bag"></i>
+                    {{ bag.name }}
+                    <span class="bag-count">{{ bag.items.count }} item{{ bag.items.count|pluralize }}</span>
+                </h4>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Category</th>
+                            <th>Quantity</th>
+                            <th>Plates</th>
+                            <th>Unit Price</th>
+                            <th>Food Cost</th>
+                            <th>Plate Cost</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in bag.items.all %}
+                        <tr>
+                            <td>{% if item.item_name %}{{ item.item_name }}{% elif item.food_item %}{{ item.food_item.name }}{% else %}[Deleted Item]{% endif %}</td>
+                            <td>{% if item.item_category %}{{ item.item_category }}{% elif item.food_item and item.food_item.category %}{{ item.food_item.category.name }}{% else %}[Deleted Category]{% endif %}</td>
+                            <td>{{ item.quantity_display }}</td>
+                            <td>
+                                {% if item.is_food_category %}
+                                    {{ item.plates }} plate{{ item.plates|pluralize }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>₦ {% if item.item_price %}{{ item.item_price|floatformat:0 }}{% elif item.food_item %}{{ item.food_item.price|floatformat:0 }}{% else %}0{% endif %}</td>
+                            <td>₦ {{ item.food_cost|floatformat:0 }}</td>
+                            <td>₦ {{ item.plate_cost|floatformat:0 }}</td>
+                            <td>₦ {{ item.subtotal|floatformat:0 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 2rem;">
+                                <p>No items found in this bag.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="bag-total">
+                Bag Total: ₦ {{ bag.total|floatformat:0 }}
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 2rem;">
+            <p>No bags found in this order.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="card order-summary-card">
+        <h3>Order Summary</h3>
+        <div class="summary-row">
+            <span>Subtotal:</span>
+            <span>₦ {{ order.subtotal|floatformat:0 }}</span>
+        </div>
+        <div class="summary-row">
+            <span>Delivery Fee:</span>
+            <span>₦ {{ order.delivery_fee|floatformat:0 }}</span>
+        </div>
+        <div class="summary-row">
+            <span>Service Charge:</span>
+            <span>₦ {{ order.service_charge|floatformat:0 }}</span>
+        </div>
+        <div class="summary-row total-row">
+            <span>Total:</span>
+            <span>₦ {{ order.total|floatformat:0 }}</span>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        {% if order.status == 'Pending' %}
+            <form method="post" action="{% url 'dashboard:update_order_status' order.id %}" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="On the Way">
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Send this order for delivery?')">
+                    <i class="fas fa-truck"></i> Send for Delivery
+                </button>
+            </form>
+        {% elif order.status == 'On the Way' %}
+            <form method="post" action="{% url 'dashboard:update_order_status' order.id %}" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="Pending">
+                <button type="submit" class="btn btn-warning" onclick="return confirm('Unsend this order for delivery?')">
+                    <i class="fas fa-undo"></i> Unsend for Delivery
+                </button>
+            </form>
+            <form method="post" action="{% url 'dashboard:update_order_status' order.id %}" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="Delivered">
+                <button type="submit" class="btn btn-success" onclick="return confirm('Mark this order as delivered?')">
+                    <i class="fas fa-check-circle"></i> Mark as Delivered
+                </button>
+            </form>
+        {% elif order.status == 'Delivered' %}
+        <div class="order-completed">
+            <i class="fas fa-check-circle"></i>
+            <span>Order Completed</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Page Header */
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.page-title {
+    color: #1C1B1C !important;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* Dashboard Sections */
+.dashboard-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Card Styling */
+.card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.order-items-card {
+    margin-bottom: 2rem;
+}
+
+.order-summary-card {
+    margin-bottom: 2rem;
+}
+
+.card h3 {
+    margin: 0 0 1rem 0;
+    color: #1C1B1C;
+    font-size: 1.25rem;
+    font-weight: 600;
+    border-bottom: 2px solid #f3f4f6;
+    padding-bottom: 0.5rem;
+}
+
+.card p {
+    margin: 0.75rem 0;
+    color: #1C1B1C;
+    line-height: 1.5;
+}
+
+.card strong {
+    color: #1C1B1C;
+    font-weight: 600;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-in-progress {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* Bag Sections - No Card Background */
+.bag-section {
+    margin-bottom: 1.5rem;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+}
+
+.bag-header {
+    background: transparent;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 1rem;
+}
+
+.bag-header h4 {
+    margin: 0;
+    color: #1C1B1C;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bag-header i {
+    color: #6b7280;
+}
+
+.bag-count {
+    background: #C41115;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-left: 0.5rem;
+}
+
+/* Table Styling */
+.table-container {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.data-table th {
+    background: #f8fafc;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #1C1B1C;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+    color: #1C1B1C;
+}
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tr:hover {
+    background: #f9fafb;
+}
+
+/* Bag Total */
+.bag-total {
+    background: transparent;
+    padding: 0.75rem 0;
+    text-align: right;
+    font-weight: 600;
+    color: #C41115;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 1rem;
+}
+
+/* Order Summary */
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+}
+
+.summary-row span:first-child {
+    color: #1C1B1C;
+    font-weight: 500;
+}
+
+.summary-row span:last-child {
+    color: #1C1B1C;
+    font-weight: 600;
+}
+
+.total-row {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    font-size: 1.125rem;
+}
+
+.total-row span:last-child {
+    color: #C41115;
+    font-weight: 700;
+}
+
+/* Action Bar */
+.action-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* Order Completed - Styled like Delivered Status */
+.order-completed {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #d1fae5;
+    color: #065f46;
+}
+
+
+/* Buttons */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: #C41115;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #a00e12;
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(196, 17, 21, 0.3);
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-outline {
+    background: transparent;
+    color: #1C1B1C;
+    border: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+}
+
+.btn-outline:hover {
+    background: #f9fafb;
+    color: #1C1B1C;
+    border-color: #d1d5db;
+    text-decoration: none;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .dashboard-sections {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .page-title {
+        font-size: 1.5rem;
+    }
+    
+    .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .bag-header h4 {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .bag-count {
+        margin-left: 0;
+    }
+}
+
+</style>
+{% endblock %}
+
+

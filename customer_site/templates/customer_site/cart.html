@@ -1,0 +1,801 @@
+{% extends 'customer_site/base.html' %}
+{% load static %}
+
+{% block title %}Cart - {{ restaurant_name }}{% endblock %}
+
+{% block content %}
+<!-- CSRF Token for AJAX requests -->
+{% csrf_token %}
+<div class="cart-page">
+    <div class="container">
+
+        <!-- Header -->
+        <!-- cart-top is rendered inside bag section; remove duplicate top header -->
+
+        <!-- Empty state -->
+        <div id="emptyState" class="empty-cart" style="display: none;">
+            <div class="empty-cart-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108" fill="none">
+                  <path d="M17.375 13.5C15.511 13.5 14 15.011 14 16.875C14 18.739 15.511 20.25 17.375 20.25H19.0335C20.5403 20.25 21.8646 21.2489 22.2786 22.6978L32.9811 60.1565C34.223 64.5032 38.1959 67.5 42.7165 67.5H73.555C77.6952 67.5 81.4182 64.9794 82.9559 61.1353L92.9072 36.2569C94.6808 31.8231 91.4154 27 86.64 27H30.5279L28.7689 20.8434C27.527 16.4968 23.5541 13.5 19.0335 13.5H17.375ZM39.4714 58.3022L32.4565 33.75H86.64L76.6886 58.6284C76.1761 59.9098 74.9351 60.75 73.555 60.75H42.7165C41.2097 60.75 39.8854 59.7511 39.4714 58.3022ZM44.375 94.5C49.9669 94.5 54.5 89.9669 54.5 84.375C54.5 78.7831 49.9669 74.25 44.375 74.25C38.7831 74.25 34.25 78.7831 34.25 84.375C34.25 89.9669 38.7831 94.5 44.375 94.5ZM44.375 87.75C42.511 87.75 41 86.239 41 84.375C41 82.511 42.511 81 44.375 81C46.239 81 47.75 82.511 47.75 84.375C47.75 86.239 46.239 87.75 44.375 87.75ZM71.375 94.5C76.9669 94.5 81.5 89.9669 81.5 84.375C81.5 78.7831 76.9669 74.25 71.375 74.25C65.7831 74.25 61.25 78.7831 61.25 84.375C61.25 89.9669 65.7831 94.5 71.375 94.5ZM71.375 87.75C69.511 87.75 68 86.239 68 84.375C68 82.511 69.511 81 71.375 81C73.239 81 74.75 82.511 74.75 84.375C74.75 86.239 73.239 87.75 71.375 87.75Z" fill="#C41115"/>
+                </svg>
+            </div>
+            <h3>Your cart is empty</h3>
+            <p>Add delicious meals to get started.</p>
+            <div style="margin-top:16px;">
+                <a href="{% url 'customer_site:homepage' %}" class="btn btn-primary">Back to menu</a>
+            </div>
+        </div>
+
+        <!-- Cart content -->
+        <div id="cartContent" class="cart-content" style="display:none;">
+            <div class="cart-layout">
+                <!-- Items -->
+                <div class="cart-items" id="cartItems"><!-- populated by JS --></div>
+
+                <!-- Summary -->
+                <aside class="order-summary" id="orderSummary">
+                    <h3 class="section-title">Price Summary</h3>
+                    <div class="summary-details" id="summaryBagRows"><!-- populated by JS --></div>
+                    <div class="summary-row total"><span>Total:</span><span id="summaryTotal">₦0</span></div>
+                    <div class="checkout-actions">
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'customer_site:checkout' %}" id="checkoutBtn" class="btn btn-primary">Proceed to checkout</a>
+                        {% else %}
+                            <button type="button" id="checkoutBtn" class="btn btn-primary" style="text-decoration: none; display: inline-block;">Proceed to checkout</button>
+                        {% endif %}
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Layout container spacing */
+.cart-content .cart-layout{max-width:none;margin:0;padding:24px 0}
+
+/* Top header (Cart + add bag) */
+.cart-header{display:flex;justify-content:space-between;align-items:center;margin:8px 0 12px}
+.cart-header .section-title{margin:0;font-size:28px}
+
+/* Bag header with actions */
+.bag-header{display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px}
+.bag-section{margin-bottom:32px}
+.bag-section:last-child{margin-bottom:0}
+.cart-top{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin-bottom:16px}
+.cart-top .section-title{margin:0}
+.bag-title{margin:0;font-size:20px;font-weight:600}
+.bag-actions{display:flex;align-items:center;gap:8px}
+.add-to-bag-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:none;border-radius:999px;background:#FFF0F1;color:#AE0610;cursor:pointer}
+.add-to-bag-btn:hover{background:#FFE4E6}
+.delete-bag-btn{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:none;background:#fff;border-radius:6px;color:#DC2626;cursor:pointer}
+.delete-bag-btn:hover{background:#FEF2F2}
+
+
+/* Quantity + remove aligned to right */
+.quantity-controls{display:flex;align-items:center;border:1px solid #E5E5E5;border-radius:12px;overflow:hidden;height:36px}
+.quantity-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:none;background:#fff;color:#474547;cursor:pointer}
+.quantity-btn:first-child{border-right:1px solid #E5E5E5}
+.quantity-btn:last-child{border-left:1px solid #E5E5E5}
+.quantity-display{min-width:36px;text-align:center}
+.remove-item-btn{margin-left:10px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:none;background:#fff;border-radius:6px;color:#DC2626;cursor:pointer}
+.remove-item-btn:hover{background:#FEF2F2}
+
+/* FORCE SPACING - These rules will override any conflicting styles */
+.bag-section .bag-header{margin-bottom:48px !important} /* FORCE 48px spacing below "Bag 1" */
+.bag-section .cart-item:last-child{padding-bottom:32px !important;margin-bottom:24px !important;border-bottom:1px solid #e0e0e0 !important}
+
+/* Responsive adjustments */
+@media (max-width:768px){
+.bag-section .bag-header{margin-bottom:32px !important}
+.bag-section .cart-item:last-child{padding-bottom:24px !important;margin-bottom:16px !important}
+}
+@media (max-width:425px){
+.bag-section .bag-header{margin-bottom:24px !important}
+.bag-section .cart-item:last-child{padding-bottom:16px !important;margin-bottom:12px !important}
+}
+
+/* Cart Page Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .cart-page .container {
+        padding: 0 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .cart-page .container {
+        padding: 0 12px;
+    }
+}
+
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Cart page JavaScript - handles cart functionality, item management, and UI updates
+(function() {
+    let currentBagId = '{{ current_bag.id|default:current_bag|default:"bag_1" }}';
+
+    function formatNaira(n) {
+        const v = Number(n || 0);
+        return '₦' + v.toLocaleString('en-NG', { maximumFractionDigits: 0 });
+    }
+
+    function getCsrfToken() {
+        const el = document.querySelector('[name=csrfmiddlewaretoken]');
+        return el ? el.value : '';
+    }
+
+    function setVisible(el, visible) {
+        if (!el) return;
+        el.style.display = visible ? '' : 'none';
+    }
+
+
+    function renderItemsForCurrentBag(bags) {
+        if (!bags.length) return;
+
+        const list = document.getElementById('cartItems');
+        list.innerHTML = '';
+
+        // Render Cart header only once at the top
+        const cartTop = document.createElement('div');
+        cartTop.className = 'cart-top';
+
+
+
+
+
+        const cartTitle = document.createElement('h1');
+        cartTitle.className = 'section-title';
+        cartTitle.textContent = 'Cart';
+        cartTop.appendChild(cartTitle);
+        
+        // Add Clear cart button beside Cart title
+        const clearCartBtn = document.createElement('button');
+        clearCartBtn.className = 'clear-cart-btn';
+        clearCartBtn.type = 'button';
+        clearCartBtn.textContent = 'Clear cart';
+        clearCartBtn.addEventListener('click', () => {
+            openClearCartModal('Are you sure you want to clear your cart?', clearCart);
+        });
+        cartTop.appendChild(clearCartBtn);
+        
+        list.appendChild(cartTop);
+
+        // Render each bag
+        bags.forEach((bag, bagIndex) => {
+            const bagSection = document.createElement('div');
+            bagSection.className = 'bag-section';
+            
+            // Bag header
+            const bagHeader = document.createElement('div');
+            bagHeader.className = 'bag-header';
+            const leftHeader = document.createElement('div');
+            leftHeader.style.display = 'flex';
+            leftHeader.style.alignItems = 'baseline';
+            leftHeader.style.gap = '16px';
+            const bagTitle = document.createElement('h3');
+            bagTitle.className = 'bag-title';
+            bagTitle.textContent = bag.name || bag.id || 'Bag';
+            leftHeader.appendChild(bagTitle);
+            const bagHeaderActions = document.createElement('div');
+            bagHeaderActions.className = 'bag-actions';
+            
+            // Add "Add item" button for each bag when multiple bags exist
+            if (bags.length > 1) {
+                const addItemBtn = document.createElement('button');
+                addItemBtn.className = 'add-to-bag-btn';
+                addItemBtn.type = 'button';
+                addItemBtn.textContent = '+ Add item';
+                addItemBtn.addEventListener('click', () => {
+                    // Set this bag as current and redirect to menu
+                    $.ajax({
+                        url: '{% url "customer_site:switch_bag" %}',
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+                        data: JSON.stringify({ bag_id: bag.id }),
+                        success: function(res) {
+                            if (res.success) {
+                                currentBagId = bag.id;
+                                window.location.href = '{% url "customer_site:homepage" %}';
+                            } else {
+                                showNotification(res.message || 'Failed to switch bag', 'error');
+                            }
+                        },
+                        error: function() {
+                            showNotification('Failed to switch bag', 'error');
+                        }
+                    });
+                });
+                bagHeaderActions.appendChild(addItemBtn);
+            }
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = 'delete-bag-btn';
+            delBtn.type = 'button';
+            delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            delBtn.addEventListener('click', () => {
+                currentBagId = bag.id; // Set current bag before deleting
+                openConfirmModal('Delete this bag?', deleteCurrentBag);
+            });
+            bagHeaderActions.appendChild(delBtn);
+            bagHeader.appendChild(leftHeader);
+            bagHeader.appendChild(bagHeaderActions);
+            bagSection.appendChild(bagHeader);
+
+            const foodItemsInBag = (bag.items || []).filter(it => !it.is_plates && (it.category || '').toLowerCase() === 'food');
+            const hasFoodInBag = foodItemsInBag.length > 0;
+            const itemsInBag = bag.items || [];
+            const categoryPriority = { food: 1, drinks: 2, snacks: 3, pizza: 4, bread: 5 };
+            const sortedItems = itemsInBag
+                .map((it, idx) => ({ it, idx }))
+                .sort((a, b) => {
+                    // Treat plates as part of the food category
+                    const ca = (a.it.is_plates ? 'food' : (a.it.category || '')).toLowerCase();
+                    const cb = (b.it.is_plates ? 'food' : (b.it.category || '')).toLowerCase();
+                    const pa = categoryPriority[ca] || 99;
+                    const pb = categoryPriority[cb] || 99;
+                    if (pa !== pb) return pa - pb;
+                    // Within the same category, ensure non-plates come before plates
+                    if (ca === 'food') {
+                        if (!!a.it.is_plates !== !!b.it.is_plates) {
+                            return a.it.is_plates ? 1 : -1; // plates last in food group
+                        }
+                    }
+                    // stable order within the same category
+                    return a.idx - b.idx;
+                })
+                .map(x => x.it);
+            
+            // Check if this is the last bag
+            const isLastBag = bagIndex === bags.length - 1;
+            
+            sortedItems.forEach((item, itemIndex) => {
+            console.log('Rendering item:', item.id, 'Quantity:', item.quantity);
+            const row = document.createElement('div');
+            row.className = 'cart-item';
+
+                // Border styling is handled by CSS (.cart-item:last-child)
+
+                // Image
+                const imageWrap = document.createElement('div');
+                imageWrap.className = 'cart-item-image';
+            const img = document.createElement('img');
+            img.src = item.image || '';
+            img.alt = item.name || '';
+                imageWrap.appendChild(img);
+
+                // Details
+                const details = document.createElement('div');
+                details.className = 'cart-item-details';
+                const name = document.createElement('h4');
+                name.className = 'cart-item-name';
+                name.textContent = item.name || '';
+                details.appendChild(name);
+                // Unit price under the name
+                const priceLine = document.createElement('p');
+                priceLine.className = 'cart-item-price';
+                priceLine.textContent = `${formatNaira(item.price)}`;
+                details.appendChild(priceLine);
+
+                // Quantity + remove
+                const qtyWrap = document.createElement('div');
+                qtyWrap.className = 'cart-item-quantity quantity-container';
+                const qtyControls = document.createElement('div');
+                qtyControls.className = 'quantity-controls';
+            const minus = document.createElement('button');
+            minus.type = 'button';
+                minus.className = 'quantity-btn';
+            minus.innerHTML = '<i class="fas fa-minus"></i>';
+                const qtyDisplay = document.createElement('div');
+                qtyDisplay.className = 'quantity-display';
+                qtyDisplay.textContent = item.quantity;
+                console.log('Setting quantity display to:', item.quantity);
+            const plus = document.createElement('button');
+            plus.type = 'button';
+                plus.className = 'quantity-btn';
+            plus.innerHTML = '<i class="fas fa-plus"></i>';
+
+            minus.addEventListener('click', () => {
+                const currentQty = Number(item.quantity);
+                const newQty = currentQty - 1;
+                console.log('Minus clicked for item:', item.id, 'current quantity:', currentQty, 'new quantity:', newQty);
+                
+                // If it's a regular item (not plates) and would go to 0, show delete modal
+                if (!item.is_plates && newQty <= 0) {
+                    openConfirmModal('Remove this item from your cart?', () => removeFromCart(item.id));
+                    return;
+                }
+                
+                // For plates: send newQty as plates param, quantity as undefined
+                // For regular items: send newQty as quantity param, plates as undefined
+                if (item.is_plates) {
+                    updateCartItem(item.id, undefined, Math.max(1, newQty));
+                } else {
+                    updateCartItem(item.id, Math.max(0, newQty), undefined);
+                }
+            });
+            plus.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('=== PLUS BUTTON CLICKED ===');
+                console.log('Item details:', { itemId: item.id, currentQty: item.quantity, isPlates: item.is_plates });
+                const newQty = Number(item.quantity) + 1;
+                console.log('New quantity will be:', newQty);
+                console.log('Available portions:', item.portions || 'Unknown');
+                
+                // For plates: send newQty as plates param, quantity as undefined
+                // For regular items: send newQty as quantity param, plates as undefined
+                if (item.is_plates) {
+                    console.log('Updating plates:', newQty);
+                    updateCartItem(item.id, undefined, newQty);
+                } else {
+                    console.log('Updating quantity:', newQty);
+                    updateCartItem(item.id, newQty, undefined);
+                }
+            });
+
+                qtyControls.appendChild(minus);
+                qtyControls.appendChild(qtyDisplay);
+                qtyControls.appendChild(plus);
+                qtyWrap.appendChild(qtyControls);
+
+            const remove = document.createElement('button');
+            remove.type = 'button';
+                remove.className = 'remove-item-btn';
+                remove.innerHTML = '<i class="fas fa-trash"></i>';
+                remove.addEventListener('click', () => {
+                    // If trying to remove plates while food items exist, block immediately with design-consistent error
+                    if (item.is_plates && hasFoodInBag) {
+                        const names = foodItemsInBag.map(fi => fi.name).filter(Boolean);
+                        const namesText = names.length > 1
+                            ? names.slice(0, -1).join(', ') + ' and ' + names.slice(-1)
+                            : (names[0] || 'a food item');
+                        const plural = names.length > 1 ? 'items' : 'item';
+                        showNotification(`You have ${namesText} that require plates. Remove the food ${plural} first.`, 'error');
+                        return;
+                    }
+                    openConfirmModal('Remove this item from your cart?', () => removeFromCart(item.id));
+                });
+                qtyWrap.appendChild(remove);
+
+                row.appendChild(imageWrap);
+                row.appendChild(details);
+                row.appendChild(qtyWrap);
+                bagSection.appendChild(row);
+            });
+
+            list.appendChild(bagSection);
+        });
+        
+        // Add "Add another bag" button after all bags
+        const addBagSection = document.createElement('div');
+        addBagSection.className = 'add-bag-section';
+        const addBagBtn = document.createElement('button');
+        addBagBtn.className = 'add-to-bag-btn';
+        addBagBtn.type = 'button';
+        addBagBtn.textContent = '+ Add another bag';
+        addBagBtn.addEventListener('click', createBag);
+        addBagSection.appendChild(addBagBtn);
+        list.appendChild(addBagSection);
+
+        // Build summary rows for all bags
+        let grandSubtotal = 0;
+        const bagRows = document.getElementById('summaryBagRows');
+        bagRows.innerHTML = '';
+        bags.forEach((b, idx) => {
+            const row = document.createElement('div');
+            row.className = 'summary-row bag-total';
+            const label = document.createElement('span');
+            label.textContent = (b.name || `Bag ${idx + 1}`) + ':';
+            const value = document.createElement('span');
+            const sub = Number(b.total || 0);
+            value.textContent = formatNaira(sub);
+            grandSubtotal += sub;
+            row.appendChild(label);
+            row.appendChild(value);
+            bagRows.appendChild(row);
+        });
+
+        const total = grandSubtotal;
+        document.getElementById('summaryTotal').textContent = formatNaira(total);
+
+        // Enable/disable checkout
+        const hasItems = bags.some(b => (b.items || []).length > 0);
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        if (checkoutBtn) {
+            checkoutBtn.classList.toggle('disabled', !hasItems);
+            checkoutBtn.setAttribute('aria-disabled', String(!hasItems));
+            
+            // Only handle button behavior for logged-out users (button element)
+            if (checkoutBtn.tagName === 'BUTTON') {
+                if (!hasItems) {
+                    checkoutBtn.onclick = null;
+                } else {
+                    // Remove any existing onclick and add our click handler
+                    checkoutBtn.onclick = null;
+                    checkoutBtn.addEventListener('click', handleCheckoutClick);
+                }
+            }
+            // For logged-in users (anchor element), just disable/enable the link
+            else if (checkoutBtn.tagName === 'A') {
+                if (!hasItems) {
+                    checkoutBtn.style.pointerEvents = 'none';
+                    checkoutBtn.style.opacity = '0.5';
+                } else {
+                    checkoutBtn.style.pointerEvents = 'auto';
+                    checkoutBtn.style.opacity = '1';
+                }
+            }
+        }
+    }
+
+    function refreshCartDisplay() {
+        console.log('refreshCartDisplay called');
+        $.ajax({
+            url: '{% url "customer_site:get_cart" %}',
+            method: 'GET',
+            success: function(res) {
+                console.log('refreshCartDisplay response:', res);
+                if (!res || !res.success || !Array.isArray(res.bags)) {
+                    setVisible(document.getElementById('cartContent'), false);
+                    setVisible(document.getElementById('emptyState'), true);
+                    return;
+                }
+                const bags = res.bags;
+                const anyItems = bags.some(b => (b.items || []).length > 0);
+                setVisible(document.getElementById('cartContent'), anyItems);
+                setVisible(document.getElementById('emptyState'), !anyItems);
+                if (!bags.length) return;
+                
+                // Update currentBagId from server response
+                if (res.current_bag_id) {
+                    currentBagId = res.current_bag_id;
+                    console.log('Updated currentBagId from server:', currentBagId);
+                } else if (!bags.find(b => b.id === currentBagId)) {
+                    currentBagId = bags[0].id;
+                }
+                
+                renderItemsForCurrentBag(bags);
+                updateCartCount(res.cart_count || 0);
+            },
+            error: function(xhr) {
+                console.error('refreshCartDisplay error:', xhr.responseText);
+                setVisible(document.getElementById('cartContent'), false);
+                setVisible(document.getElementById('emptyState'), true);
+                showNotification('Failed to load cart', 'error');
+            }
+        });
+    }
+
+    // Expose for base.js hooks
+    window.refreshCartDisplay = refreshCartDisplay;
+
+    function updateCartItem(itemId, quantity, plates) {
+        console.log('=== updateCartItem called ===');
+        console.log('Parameters:', { itemId, quantity, plates, bagId: currentBagId });
+        console.log('Current bag ID from frontend:', currentBagId);
+        
+        // Build payload explicitly - don't send bag_id to allow searching across all bags
+        const payload = { item_id: itemId };
+        if (quantity !== undefined) payload.quantity = quantity;
+        if (plates !== undefined) payload.plates = plates;
+        
+        console.log('Payload being sent:', payload);
+        console.log('CSRF Token:', getCsrfToken());
+        
+        $.ajax({
+            url: '{% url "customer_site:update_cart_item" %}',
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+            data: JSON.stringify(payload),
+            success: function(res) {
+                console.log('updateCartItem response:', res);
+                console.log('Response success:', res.success);
+                console.log('Response message:', res.message);
+                
+                if (!res.success) {
+                    console.log('Validation failed, showing error notification');
+                    showNotification(res.message || 'Failed to update cart', 'error');
+                    return;
+                }
+                console.log('Validation passed, refreshing cart display');
+                refreshCartDisplay();
+            },
+            error: function(xhr, status, error) {
+                console.error('updateCartItem error:', error, xhr.responseText);
+                console.error('Status:', status);
+                console.error('XHR:', xhr);
+                showNotification('Failed to update cart', 'error');
+            }
+        });
+    }
+
+    function removeFromCart(itemId) {
+        $.ajax({
+            url: '{% url "customer_site:remove_from_cart" %}',
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+            data: JSON.stringify({ item_id: itemId }),
+            success: function(res) {
+                if (!res.success) {
+                    showNotification(res.message || 'Unable to remove item', 'error');
+                }
+                refreshCartDisplay();
+            },
+            error: function() {
+                showNotification('Unable to remove item', 'error');
+            }
+        });
+    }
+
+    function clearCart() {
+        $.ajax({
+            url: '{% url "customer_site:clear_cart" %}',
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+            data: JSON.stringify({}),
+            success: function(res) {
+                if (res.success) {
+                    showNotification(res.message || 'Cart cleared successfully', 'success');
+                } else {
+                    showNotification(res.message || 'Failed to clear cart', 'error');
+                }
+                refreshCartDisplay();
+            },
+            error: function() { showNotification('Failed to clear cart', 'error'); }
+        });
+    }
+
+    function createBag() {
+        $.ajax({
+            url: '{% url "customer_site:create_bag" %}',
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+            data: JSON.stringify({}),
+            success: function(res) {
+                if (res.success && res.bag) {
+                    currentBagId = res.bag.id;
+                    showNotification(res.message || 'New bag created', 'success');
+                } else if (!res.success) {
+                    showNotification(res.message || 'Could not create bag', 'error');
+                }
+                refreshCartDisplay();
+            },
+            error: function() { showNotification('Could not create bag', 'error'); }
+        });
+    }
+
+    function switchBag(bagId) {
+        $.ajax({
+            url: '{% url "customer_site:switch_bag" %}',
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+            data: JSON.stringify({ bag_id: bagId }),
+            success: function(res) {
+                if (res.success && res.current_bag) {
+                    currentBagId = res.current_bag.id || bagId;
+                }
+                refreshCartDisplay();
+            },
+            error: function() { showNotification('Failed to switch bag', 'error'); }
+        });
+    }
+
+    function deleteCurrentBag() {
+        $.ajax({
+            url: '{% url "customer_site:delete_bag" %}',
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+            data: JSON.stringify({ bag_id: currentBagId }),
+            success: function(res) {
+                if (res.success) {
+                    showNotification(res.message || 'Bag deleted', 'success');
+                    if (res.current_bag) currentBagId = res.current_bag;
+                } else {
+                    showNotification(res.message || 'Cannot delete bag', 'error');
+                }
+                refreshCartDisplay();
+            },
+            error: function() { showNotification('Failed to delete bag', 'error'); }
+        });
+    }
+
+    // Function to check authentication and handle checkout
+    function handleCheckoutClick(e) {
+        e.preventDefault();
+        
+        const accessToken = localStorage.getItem('access_token');
+        
+        if (accessToken) {
+            // User is authenticated - redirect to checkout with JWT token
+            window.location.href = '{% url "customer_site:checkout" %}?jwt_token=' + accessToken;
+        } else {
+            // User is not authenticated - show login modal
+            localStorage.setItem('redirect_after_login', 'checkout');
+            if (typeof showLoginModal === 'function') {
+                showLoginModal();
+            } else {
+                alert('Please log in to proceed with checkout.');
+            }
+        }
+    }
+    
+    // Function to update checkout button based on authentication status
+    function updateCheckoutButton() {
+        const accessToken = localStorage.getItem('access_token');
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        
+        if (!checkoutBtn) return;
+        
+        // Remove any existing click listeners
+        checkoutBtn.removeEventListener('click', handleCheckoutClick);
+        
+        if (accessToken) {
+            // User is authenticated - convert to link with JWT token
+            if (checkoutBtn.tagName === 'BUTTON') {
+                const link = document.createElement('a');
+                link.href = '{% url "customer_site:checkout" %}?jwt_token=' + accessToken;
+                link.className = checkoutBtn.className;
+                link.id = checkoutBtn.id;
+                link.textContent = checkoutBtn.textContent;
+                link.style.textDecoration = 'none';
+                link.style.display = 'inline-block';
+                
+                // Copy all attributes from button to link
+                Array.from(checkoutBtn.attributes).forEach(attr => {
+                    if (attr.name !== 'onclick' && attr.name !== 'type') {
+                        link.setAttribute(attr.name, attr.value);
+                    }
+                });
+                
+                // Replace button with link
+                checkoutBtn.parentNode.replaceChild(link, checkoutBtn);
+            }
+        } else {
+            // User is not authenticated - ensure it's a button with click handler
+            if (checkoutBtn.tagName === 'A') {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = checkoutBtn.className;
+                button.id = checkoutBtn.id;
+                button.textContent = checkoutBtn.textContent;
+                button.style.textDecoration = 'none';
+                button.style.display = 'inline-block';
+                
+                // Copy all attributes from link to button
+                Array.from(checkoutBtn.attributes).forEach(attr => {
+                    if (attr.name !== 'href') {
+                        button.setAttribute(attr.name, attr.value);
+                    }
+                });
+                
+                // Replace link with button
+                checkoutBtn.parentNode.replaceChild(button, checkoutBtn);
+            }
+            
+            // Add click event listener to check authentication
+            checkoutBtn.addEventListener('click', handleCheckoutClick);
+        }
+    }
+
+    // Wire buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshCartDisplay();
+        
+        // Set up checkout button with proper authentication checking
+        updateCheckoutButton();
+        
+        // Fallback for showLoginModal if not available from base template
+        if (typeof showLoginModal === 'undefined') {
+            window.showLoginModal = function() {
+                // Set a flag to indicate user wants to checkout after login
+                localStorage.setItem('redirect_after_login', 'checkout');
+                
+                const loginModal = document.getElementById('loginModal');
+                if (loginModal) {
+                    loginModal.classList.add('active');
+                    document.body.classList.add('modal-open');
+                }
+            };
+        }
+        
+        // Listen for storage changes (when user logs in from another tab)
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'access_token' && e.newValue) {
+                updateCheckoutButton();
+            }
+        });
+        
+        // Also update checkout button periodically in case of same-tab login
+        setInterval(updateCheckoutButton, 1000);
+    });
+    // Delete-item confirm modal (matches logout modal styling)
+    let confirmModal, confirmYesBtn, confirmNoBtn, confirmMsgEl, pendingConfirmAction = null;
+    function ensureConfirmModal() {
+        if (confirmModal) return;
+        confirmModal = document.createElement('div');
+        confirmModal.id = 'deleteItemModal';
+        confirmModal.className = 'modal';
+        confirmModal.innerHTML = `
+            <div class="logout-modal-content" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+                <button class="logout-modal-close" type="button" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="#212121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <h3 id="deleteTitle" class="logout-title">Remove item</h3>
+                <p class="logout-subtitle" id="confirmMessage">Are you sure you want to remove this item from your cart?</p>
+                <div class="logout-actions">
+                    <button type="button" class="logout-confirm-btn" id="confirmYes">Delete</button>
+                    <button type="button" class="logout-cancel-btn" id="confirmNo">Cancel</button>
+                </div>
+            </div>`;
+        document.body.appendChild(confirmModal);
+        confirmYesBtn = confirmModal.querySelector('#confirmYes');
+        confirmNoBtn = confirmModal.querySelector('#confirmNo');
+        confirmMsgEl = confirmModal.querySelector('#confirmMessage');
+        const closeBtn = confirmModal.querySelector('.logout-modal-close');
+        const close = () => { confirmModal.classList.remove('active'); document.body.classList.remove('modal-open'); pendingConfirmAction = null; };
+        confirmNoBtn.addEventListener('click', close);
+        closeBtn.addEventListener('click', close);
+        confirmYesBtn.addEventListener('click', () => { if (pendingConfirmAction) pendingConfirmAction(); close(); });
+        confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) close(); });
+    }
+    function openConfirmModal(message, onConfirm) {
+        ensureConfirmModal();
+        confirmMsgEl.textContent = message || 'Are you sure?';
+        pendingConfirmAction = onConfirm;
+        confirmModal.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
+
+    // Clear cart confirm modal (matches logout modal styling)
+    let clearCartModal, clearCartYesBtn, clearCartNoBtn, clearCartMsgEl, pendingClearCartAction = null;
+    function ensureClearCartModal() {
+        if (clearCartModal) return;
+        clearCartModal = document.createElement('div');
+        clearCartModal.id = 'clearCartModal';
+        clearCartModal.className = 'modal';
+        clearCartModal.innerHTML = `
+            <div class="logout-modal-content" role="dialog" aria-modal="true" aria-labelledby="clearCartTitle">
+                <button class="logout-modal-close" type="button" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="#212121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <h3 id="clearCartTitle" class="logout-title">Clear Cart</h3>
+                <p class="logout-subtitle" id="clearCartMessage">Are you sure you want to clear your cart?</p>
+                <div class="logout-actions">
+                    <button type="button" class="logout-confirm-btn" id="clearCartYes">Clear Cart</button>
+                    <button type="button" class="logout-cancel-btn" id="clearCartNo">Cancel</button>
+                </div>
+            </div>`;
+        document.body.appendChild(clearCartModal);
+        clearCartYesBtn = clearCartModal.querySelector('#clearCartYes');
+        clearCartNoBtn = clearCartModal.querySelector('#clearCartNo');
+        clearCartMsgEl = clearCartModal.querySelector('#clearCartMessage');
+        const closeBtn = clearCartModal.querySelector('.logout-modal-close');
+        const close = () => { clearCartModal.classList.remove('active'); document.body.classList.remove('modal-open'); pendingClearCartAction = null; };
+        clearCartNoBtn.addEventListener('click', close);
+        closeBtn.addEventListener('click', close);
+        clearCartYesBtn.addEventListener('click', () => { if (pendingClearCartAction) pendingClearCartAction(); close(); });
+        clearCartModal.addEventListener('click', (e) => { if (e.target === clearCartModal) close(); });
+    }
+    function openClearCartModal(message, onConfirm) {
+        ensureClearCartModal();
+        clearCartMsgEl.textContent = message || 'Are you sure you want to clear your cart?';
+        pendingClearCartAction = onConfirm;
+        clearCartModal.classList.add('active');
+        document.body.classList.add('modal-open');
+    }
+})();
+</script>
+{% endblock %}
+
+
+

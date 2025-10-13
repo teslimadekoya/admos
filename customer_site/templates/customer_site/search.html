@@ -1,0 +1,262 @@
+{% extends 'customer_site/base.html' %}
+{% load static %}
+
+{% block title %}Search - {{ restaurant_name }}{% endblock %}
+
+{% block content %}
+<!-- Search Page -->
+<div class="search-page">
+
+    <!-- Search Results -->
+    <div class="search-results">
+        <div class="container">
+
+            <!-- Results Grid -->
+            <div class="menu-grid">
+                {% if results %}
+                    {% for item in results %}
+                        <div class="menu-item-card" data-category="{{ item.category.name|lower }}" data-item-id="{{ item.id }}" onclick="openFoodModal({
+                            id: {{ item.id }},
+                            name: '{{ item.name|escapejs }}',
+                            price: {{ item.price }},
+                            image: {% if item.image %}'{{ item.image }}'{% else %}null{% endif %},
+                            category: '{{ item.category.name|escapejs }}'
+                        })">
+                            <div class="menu-item-image">
+                                {% if item.image %}
+                                    <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+                                {% else %}
+                                    <div class="menu-item-placeholder">
+                                        <!-- Black placeholder like in Figma -->
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="menu-item-info">
+                                <h3 class="menu-item-name">{{ item.name }}</h3>
+                                <div class="menu-item-price">₦{{ item.price|floatformat:0 }}</div>
+                            </div>
+                            
+                            <button class="add-to-cart-btn" data-item-id="{{ item.id }}" onclick="event.stopPropagation();">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% elif query %}
+                                <div class="no-results">
+                                    <div class="no-results-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="109" height="108" viewBox="0 0 109 108" fill="none">
+                                            <path d="M46.3992 16.2002C62.8021 16.2002 76.0992 29.4973 76.0992 45.9002C76.0992 53.1297 73.5162 59.7558 69.2227 64.9061L91.5084 87.191C92.5628 88.2454 92.5628 89.955 91.5084 91.0094C90.5712 91.9466 89.1163 92.0508 88.064 91.3218L87.69 91.0094L65.4051 68.7236C60.2548 73.0172 53.6287 75.6002 46.3992 75.6002C29.9964 75.6002 16.6992 62.3031 16.6992 45.9002C16.6992 29.4973 29.9964 16.2002 46.3992 16.2002ZM46.3992 21.6002C32.9787 21.6002 22.0992 32.4797 22.0992 45.9002C22.0992 59.3207 32.9787 70.2002 46.3992 70.2002C59.8197 70.2002 70.6992 59.3207 70.6992 45.9002C70.6992 32.4797 59.8197 21.6002 46.3992 21.6002ZM46.3992 43.2002C47.8904 43.2002 49.0992 44.409 49.0992 45.9002V56.7002C49.0992 58.1914 47.8904 59.4002 46.3992 59.4002C44.908 59.4002 43.6992 58.1914 43.6992 56.7002V45.9002C43.6992 44.409 44.908 43.2002 46.3992 43.2002ZM49.0992 35.1002C49.0992 36.5914 47.8904 37.8002 46.3992 37.8002C44.908 37.8002 43.6992 36.5914 43.6992 35.1002C43.6992 33.609 44.908 32.4002 46.3992 32.4002C47.8904 32.4002 49.0992 33.609 49.0992 35.1002Z" fill="#C41115"/>
+                                        </svg>
+                                    </div>
+                                    <h3>No results found</h3>
+                                    <p>Try another dish or check your spelling.</p>
+                                </div>
+                {% else %}
+                    <div class="search-placeholder">
+                        <i class="fas fa-search"></i>
+                        <h3>Start typing to search</h3>
+                        <p>Search for food items, categories, or ingredients</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Search Page Styles */
+.search-page {
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+}
+
+
+.search-results {
+    position: relative;
+    padding: 40px 0;
+    min-height: calc(100vh - 120px);
+}
+
+.search-results > .container {
+    width: 100%;
+}
+
+            /* Empty states (centered) */
+            .no-results, .search-placeholder {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                text-align: center;
+            }
+
+/* No results icon */
+.no-results-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 108px;
+    height: 108px;
+}
+
+.no-results h3 {
+    color: var(--Text-Primary, #1C1B1C);
+    font-family: Satoshi;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 120%;
+    margin: 0;
+}
+
+            .no-results p {
+                color: var(--Text-Secondary, #474547);
+                font-family: Satoshi;
+                font-size: 16px;
+                font-weight: 400;
+                line-height: 140%;
+                margin: 0;
+            }
+
+.search-placeholder i {
+    font-size: 3rem;
+    color: var(--text-tertiary);
+}
+
+.search-placeholder h3 {
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .search-results {
+        padding: 20px 0;
+        min-height: calc(100vh - 100px);
+    }
+    
+    .search-results > .container {
+        padding: 0 12px;
+    }
+    
+    .menu-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 32px;
+    }
+    
+    
+    .menu-item-name {
+        font-size: 14px;
+    }
+    
+    .menu-item-price {
+        font-size: 14px;
+    }
+    
+    .add-to-cart-btn {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .no-results, .search-placeholder {
+        padding: 0 20px;
+    }
+    
+    .no-results-icon {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .no-results h3 {
+        font-size: 18px;
+    }
+    
+    .no-results p {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .search-results {
+        padding: 16px 0;
+        min-height: calc(100vh - 80px);
+    }
+    
+    .search-results > .container {
+        padding: 0 12px;
+    }
+    
+    .menu-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    
+    
+    .no-results, .search-placeholder {
+        padding: 0 16px;
+    }
+    
+    .no-results-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .no-results h3 {
+        font-size: 16px;
+    }
+    
+    .no-results p {
+        font-size: 13px;
+    }
+}
+
+
+
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Populate search bar with query and show clear button
+    const searchInput = document.querySelector('.search-input');
+    const clearBtn = document.querySelector('.search-clear-btn');
+    
+    if (searchInput && clearBtn && '{{ query }}') {
+        searchInput.value = '{{ query }}';
+        clearBtn.style.display = 'flex';
+    }
+    
+    // Add to cart functionality
+    $('.add-to-cart-btn').click(function(e) {
+        e.preventDefault();
+        const itemId = $(this).data('item-id');
+        
+        // Add to cart logic here
+        console.log('Adding item to cart:', itemId);
+        
+        // Show success message
+        $(this).html('<i class="fas fa-check"></i>');
+        $(this).css('background-color', 'var(--success-color)');
+        
+        setTimeout(() => {
+            $(this).html('<i class="fas fa-plus"></i>');
+            $(this).css('background-color', 'var(--primary-color)');
+        }, 2000);
+    });
+});
+
+function goBack() {
+    // Clear search bar and go to homepage
+    window.location.href = '/';
+}
+
+</script>
+{% endblock %}

@@ -1,0 +1,1844 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ restaurant_name|default:"Admos Place" }} - Delicious Food, Delivered Fast{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
+    <link rel="shortcut icon" type="image/png" href="{% static 'favicon.png' %}">
+    
+    <!-- Google Maps API -->
+    {% if GOOGLE_MAPS_API_KEY %}
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initMap"></script>
+    {% endif %}
+    
+    <!-- Critical CSS first to prevent layout shift -->
+    <style>
+        /* Prevent layout shift while fonts load */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+        }
+        
+        /* Hide content until fully loaded */
+        .navbar, .main-content {
+            opacity: 0;
+            transition: opacity 0.2s ease-in;
+        }
+        
+        .navbar.loaded, .main-content.loaded {
+            opacity: 1;
+        }
+        
+        /* Prevent flash of unstyled content */
+        .nav-container {
+            min-height: 80px;
+        }
+        
+        .logo-image {
+            max-width: 120px;
+            height: auto;
+        }
+    </style>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="{% static 'customer_site/css/customer-style.css' %}">
+    
+    <!-- Fonts - load after critical CSS with font-display swap -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <!-- Desktop: Logo, Search, Icons in single row -->
+            <!-- Logo -->
+            <div class="nav-brand">
+                <a href="{% url 'customer_site:homepage' %}" class="logo-link">
+                    <img src="{% static 'customer_site/images/Admos Logo.png' %}" alt="Admos Place" class="logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="logo-badge" style="display: none;">
+                        <div class="logo-text-large">Admos</div>
+                        <div class="logo-text-small">PLACE</div>
+                    </div>
+                </a>
+            </div>
+            
+            <!-- Search Bar (only on homepage, menu, and search pages) -->
+            {% if request.resolver_match.url_name == 'homepage' or request.resolver_match.url_name == 'search' %}
+            <div class="search-container">
+                <div class="search-bar">
+                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M10 2.75C14.0041 2.75 17.25 5.99594 17.25 10C17.25 11.7319 16.6427 13.3219 15.6295 14.5688L20.5303 19.4697C20.8232 19.7626 20.8232 20.2374 20.5303 20.5303C20.2641 20.7966 19.8474 20.8208 19.5538 20.6029L19.4697 20.5303L14.5688 15.6295C13.3219 16.6427 11.7319 17.25 10 17.25C5.99594 17.25 2.75 14.0041 2.75 10C2.75 5.99594 5.99594 2.75 10 2.75ZM10 4.25C6.82436 4.25 4.25 6.82436 4.25 10C4.25 13.1756 6.82436 15.75 10 15.75C13.1756 15.75 15.75 13.1756 15.75 10C15.75 6.82436 13.1756 4.25 10 4.25Z" fill="#676267"/>
+                    </svg>
+                    <input type="text" placeholder="Search..." class="search-input" onkeypress="handleSearchKeypress(event)" oninput="handleSearchInput(event)" onfocus="handleSearchFocus(event)" onblur="handleSearchBlur(event)">
+                    <button class="search-clear-btn" onclick="clearSearchAndGoHome()" style="display: none;" title="Clear search" aria-label="Clear search">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" fill="#1C1B1C"/>
+                        </svg>
+                        <span class="clear-btn-text" style="color: #1C1B1C !important;">Clear</span>
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Action Icons -->
+            <div class="nav-actions">
+                <a href="{% url 'customer_site:cart' %}" class="action-icon cart-btn">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count" id="cart-count">0</span>
+                </a>
+                <div class="user-profile-container">
+                    <a href="#" class="action-icon user-btn" id="profile-btn">
+                        <i class="fas fa-user"></i>
+                    </a>
+                    <div class="profile-dropdown" id="profile-dropdown">
+                        <div class="profile-dropdown-content">
+                            <div class="profile-dropdown-header">
+                                <div class="profile-avatar">
+                                    <i class="fas fa-user-circle"></i>
+                                </div>
+                                <div class="profile-info">
+                                    <div class="profile-name" id="profile-name">{% if user.is_authenticated %}{{ user.first_name|default:user.phone_number }}{% else %}Guest{% endif %}</div>
+                                    <div class="profile-email" id="profile-email" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="profile-dropdown-divider"></div>
+                            <div class="profile-dropdown-menu" id="profile-menu">
+                                {% if user.is_authenticated %}
+                                    <a href="{% url 'customer_site:profile' %}" class="profile-menu-item">
+                                        <i class="fas fa-user"></i>
+                                        <span>Profile</span>
+                                    </a>
+                                    <a href="{% url 'customer_site:order_history' %}" class="profile-menu-item">
+                                        <i class="fas fa-shopping-bag"></i>
+                                        <span>Manage Orders</span>
+                                    </a>
+                                    <a href="{% url 'accounts:logout' %}" class="profile-menu-item logout-item">
+                                        <i class="fas fa-sign-out-alt"></i>
+                                        <span>Log Out</span>
+                                    </a>
+                                {% else %}
+                                    <a href="#" class="profile-menu-item" onclick="showLoginModal()">
+                                        <i class="fas fa-sign-in-alt"></i>
+                                        <span>Log In</span>
+                                    </a>
+                                    <a href="#" class="profile-menu-item" onclick="showSignupModal()">
+                                        <i class="fas fa-user-plus"></i>
+                                        <span>Sign Up</span>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mobile: Two-row layout -->
+            <div class="nav-top-row">
+                <!-- Logo -->
+                <div class="nav-brand">
+                    <a href="{% url 'customer_site:homepage' %}" class="logo-link">
+                        <img src="{% static 'customer_site/images/Admos Logo.png' %}" alt="Admos Place" class="logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="logo-badge" style="display: none;">
+                            <div class="logo-text-large">Admos</div>
+                            <div class="logo-text-small">PLACE</div>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Action Icons -->
+                <div class="nav-actions">
+                    <a href="{% url 'customer_site:cart' %}" class="action-icon cart-btn">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-count" id="cart-count">0</span>
+                    </a>
+                    <div class="user-profile-container">
+                        <a href="#" class="action-icon user-btn" id="profile-btn-mobile">
+                            <i class="fas fa-user"></i>
+                        </a>
+                        <div class="profile-dropdown" id="profile-dropdown-mobile">
+                            <div class="profile-dropdown-content">
+                                <div class="profile-dropdown-header">
+                                    <div class="profile-avatar">
+                                        <i class="fas fa-user-circle"></i>
+                                    </div>
+                                    <div class="profile-info">
+                                        <div class="profile-name" id="profile-name-mobile">{% if user.is_authenticated %}{{ user.first_name|default:user.phone_number }}{% else %}Guest{% endif %}</div>
+                                        <div class="profile-email" id="profile-email-mobile" style="display: none;"></div>
+                                    </div>
+                                </div>
+                                <div class="profile-dropdown-divider"></div>
+                                <div class="profile-dropdown-menu" id="profile-menu-mobile">
+                                    {% if user.is_authenticated %}
+                                        <a href="{% url 'customer_site:profile' %}" class="profile-menu-item">
+                                            <i class="fas fa-user"></i>
+                                            <span>Profile</span>
+                                        </a>
+                                        <a href="{% url 'customer_site:order_history' %}" class="profile-menu-item">
+                                            <i class="fas fa-shopping-bag"></i>
+                                            <span>Manage Orders</span>
+                                        </a>
+                                        <a href="{% url 'accounts:logout' %}" class="profile-menu-item logout-item">
+                                            <i class="fas fa-sign-out-alt"></i>
+                                            <span>Log Out</span>
+                                        </a>
+                                    {% else %}
+                                        <a href="#" class="profile-menu-item" onclick="showLoginModal()">
+                                            <i class="fas fa-sign-in-alt"></i>
+                                            <span>Log In</span>
+                                        </a>
+                                        <a href="#" class="profile-menu-item" onclick="showSignupModal()">
+                                            <i class="fas fa-user-plus"></i>
+                                            <span>Sign Up</span>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                        <button class="alert-close" onclick="this.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <!-- Logo Section -->
+            <div class="footer-logo">
+                <a href="{% url 'customer_site:homepage' %}" class="logo-link">
+                    <img src="{% static 'customer_site/images/Admos Logo.png' %}" alt="Admos Place" class="footer-logo-image">
+                </a>
+            </div>
+            
+            <!-- Address Section -->
+            <div class="footer-section">
+                <h4 class="footer-heading">Address</h4>
+                <p class="footer-text">No 3, Gbotifa Street, Kajola Bus Stop Imota</p>
+            </div>
+            
+            <!-- Contacts Section -->
+            <div class="footer-section">
+                <h4 class="footer-heading">Contacts</h4>
+                <p class="footer-text">Phone: +234 802 728 1620</p>
+                <p class="footer-text">Whatsapp: +234 802 728 1620</p>
+            </div>
+            
+            <!-- Copyright Section -->
+            <div class="footer-copyright">
+                <p class="copyright-text">© 2025 ADMOS PLACE. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="modal" id="logoutConfirmModal">
+        <div class="logout-modal-content">
+            <button class="logout-modal-close" onclick="closeLogoutConfirm()" aria-label="Close">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="#212121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <h3 class="logout-title">Confirm Logout</h3>
+            <p class="logout-subtitle">Are you sure you want to log out?</p>
+            <div class="logout-actions">
+                <button class="logout-confirm-btn" onclick="performLogout()">Yes</button>
+                <button class="logout-cancel-btn" onclick="closeLogoutConfirm()">No</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Logout modal layout and typography (scoped) */
+        .logout-modal-content {
+            display: flex;
+            width: 560px;
+            padding: 44px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0;
+            border-radius: var(--Border-Radius-24, 24px);
+            background: #FFF;
+            color: var(--Text-Primary, #1C1B1C);
+            text-align: center;
+            margin: 40px auto; /* center within modal */
+            position: relative;
+            max-width: 90vw;
+        }
+        .logout-title {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 28px;
+            font-style: normal;
+            font-weight: 600;
+            line-height: 1;
+            letter-spacing: -0.14px;
+            color: var(--Text-Primary, #1C1B1C);
+            text-align: center;
+            margin: 0 0 4px 0;
+            align-self: stretch;
+        }
+        .logout-subtitle {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 16px;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 150%;
+            color: var(--Text-Secondary, #474547);
+            text-align: center;
+            margin: 0 0 24px 0;
+            align-self: stretch;
+        }
+        .logout-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-self: stretch;
+            width: 100%;
+        }
+        .logout-confirm-btn {
+            display: flex;
+            height: 48px;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            align-self: stretch;
+            border-radius: var(--Border-Radius-12, 12px);
+            background: var(--Admos-700, #C41115);
+            color: var(--White, #FFF);
+            text-align: center;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 16px;
+            font-style: normal;
+            font-weight: 600;
+            line-height: 150%;
+            border: none;
+            cursor: pointer;
+        }
+        .logout-cancel-btn {
+            display: flex;
+            height: 48px;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            align-self: stretch;
+            border-radius: var(--Border-Radius-12, 12px);
+            border: 1px solid var(--Light-Stroke-2, #DCDBDC);
+            background: #FFF;
+            color: #1C1B1C;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 16px;
+            font-style: normal;
+            font-weight: 600;
+            line-height: 150%;
+            cursor: pointer;
+        }
+        .logout-modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+        /* Use global .modal centering; just constrain width */
+        #logoutConfirmModal .logout-modal-content { max-width: 560px; }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .logout-modal-content {
+                width: 90%;
+                max-width: 400px;
+                padding: 32px 24px;
+                gap: 0;
+            }
+            .logout-title {
+                font-size: 20px;
+                letter-spacing: -0.1px;
+            }
+            .logout-subtitle {
+                font-size: 16px;
+            }
+        }
+    </style>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="login-modal-content">
+            <button class="login-modal-close" onclick="closeLoginModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="#212121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            
+            <h3 class="login-title">Log In</h3>
+            <p class="login-subtitle">Log in to continue</p>
+            
+            <form id="loginForm" class="login-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="phoneNumber" class="form-label">Phone Number</label>
+                    <input type="tel" id="phoneNumber" name="phone_number" class="form-input" placeholder="Phone Number" maxlength="11" pattern="[0-9]*" inputmode="numeric" required>
+                </div>
+                
+                <button type="submit" class="login-btn">Log In</button>
+            </form>
+            
+            <p class="login-footer">
+                Don't have an account? <a href="#" class="create-account-link" onclick="showSignupModal()">Create Account</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Create Account Modal -->
+    <div class="modal" id="createAccountModal">
+        <div class="create-account-modal-content">
+            <button class="create-account-modal-close" onclick="closeCreateAccountModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="#212121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            
+            <h3 class="create-account-title">Create Account</h3>
+            <p class="create-account-subtitle">Fill in details to create account</p>
+            
+            <form id="createAccountForm" class="create-account-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="firstName" class="form-label">First Name</label>
+                    <input type="text" id="firstName" name="first_name" class="form-input" placeholder="First Name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="lastName" class="form-label">Last Name</label>
+                    <input type="text" id="lastName" name="last_name" class="form-input" placeholder="Last Name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" id="email" name="email" class="form-input" placeholder="Email Address" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="createPhoneNumber" class="form-label">Phone Number</label>
+                    <input type="tel" id="createPhoneNumber" name="phone_number" class="form-input" placeholder="Phone Number" maxlength="11" pattern="[0-9]*" inputmode="numeric" required>
+                </div>
+                
+                <button type="submit" class="create-account-btn">Next</button>
+            </form>
+            
+            <p class="create-account-footer">
+                Already have an account? <a href="#" class="login-link" onclick="closeCreateAccountModal(); showLoginModal();">Log In</a>
+            </p>
+        </div>
+    </div>
+
+
+    <!-- OTP Verification Modal -->
+    <div class="modal" id="otpModal">
+        <div class="otp-modal-content">
+            <button class="otp-modal-close" onclick="closeOtpModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="#212121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            
+            <h3 class="otp-title">Verify Phone Number</h3>
+            <p class="otp-subtitle">Please input code sent to <span class="phone-number-link" onclick="editPhoneNumber()">number</span></p>
+            
+            <form id="otpForm" class="otp-form">
+                {% csrf_token %}
+                <div class="otp-inputs">
+                    <input type="text" id="otp1" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                    <input type="text" id="otp2" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                    <input type="text" id="otp3" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                    <input type="text" id="otp4" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                    <input type="text" id="otp5" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                </div>
+                
+                <button type="submit" class="otp-btn">Create Account</button>
+            </form>
+            
+            <p class="otp-resend">
+                Didn't receive the code? <a href="#" class="resend-link" onclick="resendOTP()">Resend</a>
+                <span class="resend-timer" id="resendTimer" style="display: none;"></span>
+            </p>
+            
+            <p class="otp-footer">
+                Already have an account? <a href="#" class="login-link" onclick="closeOtpModal(); showLoginModal();">Log In</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Food Item Modal -->
+    <div class="modal" id="foodModal">
+        <div class="modal-content food-modal-content">
+            <button class="login-modal-close" onclick="closeFoodModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="#212121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            
+            <div class="food-modal-image">
+                <img id="modalFoodImage" src="" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="food-modal-image-placeholder" style="display: none;">
+                    <i class="fas fa-utensils"></i>
+                </div>
+            </div>
+            
+            <div class="food-modal-info">
+                <div class="food-modal-details">
+                    <div class="name-quantity-row">
+                        <div class="name-price-column">
+                            <h3 id="modalFoodName" class="food-modal-name"></h3>
+                            <p id="modalFoodPrice" class="food-modal-price"></p>
+                        </div>
+                        <!-- Quantity Selector -->
+                        <div class="quantity-selector">
+                            <button class="quantity-btn" onclick="decreaseQuantity()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M5 12H19" stroke="#474547" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                            <span id="modalQuantity" class="quantity-display">1</span>
+                            <button class="quantity-btn" onclick="increaseQuantity()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 5V19" stroke="#474547" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M5 12H19" stroke="#474547" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Plate Selector (only for food category items) -->
+                    <div id="plateSelector" class="plate-selector" style="display: none;">
+                        <div class="name-quantity-row">
+                            <div class="name-price-column">
+                                <div class="plate-title-row">
+                                    <span class="plate-label">Plates</span>
+                                    <span class="required-text">
+                                        Required
+                                        <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="#C41115"/>
+                                        </svg>
+                                    </span>
+                                </div>
+                                <span class="plate-price" id="modalPlatePrice">+ ₦{{ plate_fee }} each</span>
+                            </div>
+                            <!-- Plate Quantity Selector -->
+                            <div class="quantity-selector">
+                                <button class="quantity-btn" onclick="decreasePlates()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M5 12H19" stroke="#474547" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                                <span id="modalPlates" class="quantity-display">1</span>
+                                <button class="quantity-btn" onclick="increasePlates()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 5V19" stroke="#474547" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M5 12H19" stroke="#474547" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="food-modal-actions">
+                    <div class="actions-wrapper">
+                        <div class="quantity-container">
+                            <!-- Add to Order Button -->
+                            <button class="add-to-order-btn" onclick="addToOrder()">
+                                <span id="addToOrderText">Add to Order</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="{% static 'customer_site/js/customer-main.js' %}"></script>
+    
+            <script>
+            // Update cart count
+            function updateCartCount() {
+                // This would typically fetch from session or API
+                // For now, we'll use a placeholder
+                const cartCount = 0; // You can implement this based on your cart logic
+                document.getElementById('cart-count').textContent = cartCount;
+            }
+            
+            // Handle search keypress
+            function handleSearchKeypress(event) {
+                if (event.key === 'Enter') {
+                    const query = event.target.value.trim();
+                    if (query.length >= 2) {
+                        window.location.href = `/search/?q=${encodeURIComponent(query)}`;
+                    }
+                }
+            }
+            
+            // Handle search input to show/hide clear button
+            function handleSearchInput(event) {
+                const query = event.target.value.trim();
+                const clearBtn = document.querySelector('.search-clear-btn');
+                
+                if (query.length > 0) {
+                    clearBtn.style.display = 'flex';
+                    clearBtn.style.opacity = '1';
+                    clearBtn.style.transform = 'scale(1)';
+                } else {
+                    clearBtn.style.display = 'flex'; // Always show when focused
+                    clearBtn.style.opacity = '0.6';
+                    clearBtn.style.transform = 'scale(0.95)';
+                }
+            }
+            
+            // Handle search bar focus to show clear button
+            function handleSearchFocus(event) {
+                const clearBtn = document.querySelector('.search-clear-btn');
+                const query = event.target.value.trim();
+                
+                clearBtn.style.display = 'flex';
+                if (query.length > 0) {
+                    clearBtn.style.opacity = '1';
+                    clearBtn.style.transform = 'scale(1)';
+                } else {
+                    clearBtn.style.opacity = '0.6';
+                    clearBtn.style.transform = 'scale(0.95)';
+                }
+            }
+            
+            // Handle search bar blur to hide clear button if empty
+            function handleSearchBlur(event) {
+                const query = event.target.value.trim();
+                const clearBtn = document.querySelector('.search-clear-btn');
+                
+                if (query.length === 0) {
+                    clearBtn.style.display = 'none';
+                }
+            }
+            
+            // Clear search and go to homepage
+            function clearSearchAndGoHome() {
+                const searchInput = document.querySelector('.search-input');
+                const clearBtn = document.querySelector('.search-clear-btn');
+                
+                // Add click animation
+                clearBtn.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    clearBtn.style.transform = 'scale(1)';
+                }, 100);
+                
+                searchInput.value = '';
+                clearBtn.style.display = 'none';
+                
+                // Go to homepage
+                window.location.href = '/';
+            }
+            
+            // Clear search bar when on homepage
+            function clearSearchBar() {
+                const searchInput = document.querySelector('.search-input');
+                const clearBtn = document.querySelector('.search-clear-btn');
+                
+                if (searchInput && window.location.pathname === '/') {
+                    searchInput.value = '';
+                    clearBtn.style.display = 'none';
+                }
+            }
+            
+            // Clear search bar on page load
+            document.addEventListener('DOMContentLoaded', clearSearchBar);
+            
+            // Initialize cart count on page load
+            document.addEventListener('DOMContentLoaded', updateCartCount);
+            
+            // Update cart count on window resize to ensure consistency across screen sizes
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    updateCartCount();
+                }, 250);
+            });
+            
+            // Handle browser back button on search pages - simple approach
+            function handleSearchPageBackButton() {
+                // Check if we're on a search page with query parameters
+                const currentPath = window.location.pathname;
+                const currentSearch = window.location.search;
+                
+                if (currentPath === '/search/' && currentSearch.includes('q=')) {
+                    // Simply replace the current history with homepage
+                    // This makes the back button go directly to homepage
+                    history.replaceState(null, '', '/');
+                    
+                    // Show helpful message about clearing search
+                    showSearchClearHint();
+                }
+            }
+            
+            // Show hint about using clear button
+            function showSearchClearHint() {
+                // Check if hint already exists
+                if (document.querySelector('.search-clear-hint')) {
+                    return;
+                }
+                
+                // Create hint message
+                const hint = document.createElement('div');
+                hint.className = 'search-clear-hint';
+                hint.innerHTML = `
+                    <div class="hint-content">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Click <strong>Clear</strong> to go back to home</span>
+                        <div class="hint-arrow">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <button class="hint-close" onclick="this.parentElement.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Insert at the beginning of main content
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.insertBefore(hint, mainContent.firstChild);
+                    
+                    // Auto-hide after 8 seconds
+                    setTimeout(() => {
+                        if (hint.parentNode) {
+                            hint.remove();
+                        }
+                    }, 8000);
+                }
+            }
+            
+            // Initialize back button handling on page load
+            document.addEventListener('DOMContentLoaded', handleSearchPageBackButton);
+            
+            // Update profile UI on page load
+            document.addEventListener('DOMContentLoaded', updateProfileUI);
+            
+            // Clean up modal state on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                // Remove any lingering modal classes
+                $('body').removeClass('modal-open');
+                $('.modal').removeClass('active');
+            });
+            
+            // Clean up modal state when navigating away
+            window.addEventListener('beforeunload', function() {
+                $('body').removeClass('modal-open');
+                $('.modal').removeClass('active');
+            });
+            
+            // Show content once everything is loaded
+            window.addEventListener('load', function() {
+                $('.navbar, .main-content').addClass('loaded');
+            });
+            
+            // Fallback: show content after a short delay if load event doesn't fire
+            setTimeout(function() {
+                $('.navbar, .main-content').addClass('loaded');
+            }, 100);
+            
+            // Login modal functions
+            function showLoginModal() {
+                // Set a flag to indicate user wants to checkout after login
+                localStorage.setItem('redirect_after_login', 'checkout');
+                
+                $('#loginModal').addClass('active');
+                $('body').addClass('modal-open');
+            }
+            
+            function closeLoginModal() {
+                $('#loginModal').removeClass('active');
+                $('body').removeClass('modal-open');
+                // Reset form
+                $('#loginForm')[0].reset();
+                $('.form-input').removeClass('error');
+                $('.error-message').remove();
+                // Clear redirect flag if modal is closed without successful login
+                localStorage.removeItem('redirect_after_login');
+            }
+            
+            function showSignupModal() {
+                closeLoginModal();
+                $('#createAccountModal').addClass('active');
+                $('body').addClass('modal-open');
+            }
+            
+            
+            // Close create account modal
+            function closeCreateAccountModal() {
+                $('#createAccountModal').removeClass('active');
+                $('body').removeClass('modal-open');
+                
+                // Reset form
+                $('#createAccountForm')[0].reset();
+                $('#createAccountForm .form-input').removeClass('error');
+                $('#createAccountForm .error-message').remove();
+            }
+            
+            // Handle phone number input - only allow numbers
+            $('#phoneNumber').on('input', function() {
+                let value = $(this).val() || '';
+                // Remove any non-numeric characters
+                value = value.replace(/[^0-9]/g, '');
+                // Limit to 11 digits
+                if (value.length > 11) {
+                    value = value.substring(0, 11);
+                }
+                $(this).val(value);
+            });
+            
+            // Handle phone number input in create account modal - only allow numbers
+            $('#createPhoneNumber').on('input', function() {
+                let value = $(this).val() || '';
+                // Remove any non-numeric characters
+                value = value.replace(/[^0-9]/g, '');
+                // Limit to 11 digits
+                if (value.length > 11) {
+                    value = value.substring(0, 11);
+                }
+                $(this).val(value);
+            });
+            
+            
+            // Handle login form submission
+            $('#loginForm').on('submit', function(e) {
+                e.preventDefault();
+                console.log('Login form submitted - validation starting');
+                
+                // Clear previous errors FIRST
+                $('.form-input').removeClass('error');
+                $('.error-message').remove();
+                
+                const phoneNumber = $('#phoneNumber').val().trim();
+                const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+                
+                console.log('Phone number:', phoneNumber, 'Length:', phoneNumber.length);
+                
+                // Basic validation
+                if (!phoneNumber) {
+                    console.log('Validation failed: Phone number is empty');
+                    showFieldError('#phoneNumber', 'Phone number is required');
+                    return;
+                }
+                
+                if (phoneNumber.length !== 11) {
+                    console.log('Validation failed: Phone number length is', phoneNumber.length, 'not 11');
+                    showFieldError('#phoneNumber', 'Please type a valid phone number');
+                    console.log('Stopping form submission due to validation failure');
+                    return;
+                }
+                
+                console.log('Validation passed, proceeding with login');
+                
+                // Show loading state
+                const submitBtn = $('.login-btn');
+                const originalText = submitBtn.text();
+                submitBtn.text('Logging in...').prop('disabled', true);
+                
+                // Make login request
+                $.ajax({
+                    url: '/api/accounts/login/',
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    },
+                    data: JSON.stringify({
+                        phone_number: phoneNumber
+                    }),
+                    success: function(response) {
+                        // Store tokens
+                        localStorage.setItem('access_token', response.access);
+                        localStorage.setItem('refresh_token', response.refresh);
+                        
+                        // Show success message
+                        showNotification('Login successful!', 'success');
+                        
+                        // Close modal and update UI
+                        closeLoginModal();
+                        updateProfileUI();
+                        
+                        // Update checkout button if on cart page
+                        if (typeof updateCheckoutButton === 'function') {
+                            updateCheckoutButton();
+                        }
+                        
+                        // Check if user was trying to checkout and redirect
+                        const redirectAfterLogin = localStorage.getItem('redirect_after_login');
+                        if (redirectAfterLogin === 'checkout') {
+                            localStorage.removeItem('redirect_after_login');
+                            // Redirect to checkout with JWT token
+                            window.location.href = '/checkout/?jwt_token=' + response.access;
+                        }
+                    },
+                    error: function(xhr) {
+                        const response = xhr.responseJSON;
+                        let errorMessage = 'Login failed. Please try again.';
+                        
+                        if (response && response.error) {
+                            if (response.error === 'User not found') {
+                                errorMessage = 'Please check your phone number or create a new account.';
+                            } else if (response.error === 'Access denied. This account cannot login to customer website.') {
+                                errorMessage = 'This account cannot access the customer website. Please contact support.';
+                            } else {
+                                errorMessage = response.error;
+                            }
+                        }
+                        
+                        showFieldError('#phoneNumber', errorMessage);
+                        showNotification(errorMessage, 'error');
+                    },
+                    complete: function() {
+                        // Reset button state
+                        submitBtn.text(originalText).prop('disabled', false);
+                    }
+                });
+            });
+            
+            function showFieldError(fieldSelector, message) {
+                $(fieldSelector).addClass('error');
+                $(fieldSelector).after(`<div class="error-message">${message}</div>`);
+            }
+            
+            function showNotification(message, type = 'info') {
+                const notification = $(`
+                    <div class="notification ${type}">
+                        ${message}
+                    </div>
+                `);
+                
+                $('body').append(notification);
+                
+                // Auto remove after 4 seconds
+                setTimeout(() => {
+                    notification.fadeOut(() => notification.remove());
+                }, 4000);
+            }
+            
+            // Close modal when clicking outside
+            $(document).click(function(e) {
+                if ($(e.target).hasClass('modal')) {
+                    if ($(e.target).attr('id') === 'loginModal') {
+                        closeLoginModal();
+                    } else if ($(e.target).attr('id') === 'createAccountModal') {
+                        closeCreateAccountModal();
+                    } else if ($(e.target).attr('id') === 'otpModal') {
+                        closeOtpModal();
+                    }
+                }
+            });
+            
+            // Close modal with escape key
+            $(document).keyup(function(e) {
+                if (e.keyCode === 27) { // Escape key
+                    if ($('#loginModal').hasClass('active')) {
+                        closeLoginModal();
+                    } else if ($('#createAccountModal').hasClass('active')) {
+                        closeCreateAccountModal();
+                    } else if ($('#otpModal').hasClass('active')) {
+                        closeOtpModal();
+                    } else if ($('#foodModal').hasClass('active')) {
+                        closeFoodModal();
+                    }
+                }
+            });
+            
+            // Food Modal Functions
+            let currentFoodItem = null;
+            let currentQuantity = 1;
+            let currentPlates = 1;
+            
+            function getUnitForCategory(category) {
+                if (!category) return "item";
+                
+                const categoryName = category.toLowerCase();
+                switch (categoryName) {
+                    case 'food':
+                        return "portion";
+                    case 'drinks':
+                        return "bottle";
+                    case 'pizza':
+                        return "pack";
+                    case 'snacks':
+                        return "snack";
+                    case 'bread':
+                        return "loaf";
+                    default:
+                        return "item";
+                }
+            }
+            
+            function openFoodModal(foodData) {
+                currentFoodItem = foodData;
+                currentQuantity = 1;
+                currentPlates = 1;
+                
+                // Get the appropriate unit for this category
+                const unit = getUnitForCategory(foodData.category);
+                
+                // Populate modal with food data
+                document.getElementById('modalFoodName').textContent = foodData.name;
+                document.getElementById('modalFoodPrice').textContent = `₦${foodData.price} Per ${unit}`;
+                
+                // Handle image display
+                const modalImage = document.getElementById('modalFoodImage');
+                const placeholder = modalImage.nextElementSibling;
+                
+                if (foodData.image && foodData.image !== 'null') {
+                    modalImage.src = foodData.image;
+                    modalImage.alt = foodData.name;
+                    modalImage.style.display = 'block';
+                    placeholder.style.display = 'none';
+                } else {
+                    modalImage.style.display = 'none';
+                    placeholder.style.display = 'flex';
+                }
+                
+                // Show/hide plate selector based on category and cart state
+                const plateSelector = document.getElementById('plateSelector');
+                const isFoodCategory = foodData.category && foodData.category.toLowerCase() === 'food';
+                const isPlateItem = foodData.name && foodData.name.toLowerCase() === 'plate';
+                
+                // Check if this is the first food item being added to cart
+                checkCartAndShowPlates(isFoodCategory, isPlateItem, plateSelector);
+                
+                // Update quantity display and button states
+                updateQuantityDisplay();
+                
+                // Show modal
+                $('#foodModal').addClass('active');
+                $('body').addClass('modal-open');
+            }
+            
+            function closeFoodModal() {
+                $('#foodModal').removeClass('active');
+                $('body').removeClass('modal-open');
+                currentFoodItem = null;
+                currentQuantity = 1;
+            }
+            
+            function increaseQuantity() {
+                currentQuantity++;
+                updateQuantityDisplay();
+            }
+            
+            function decreaseQuantity() {
+                if (currentQuantity > 1) {
+                    currentQuantity--;
+                    updateQuantityDisplay();
+                }
+            }
+            
+            function increasePlates() {
+                currentPlates++;
+                updateQuantityDisplay();
+            }
+            
+            function decreasePlates() {
+                if (currentPlates > 1) {
+                    currentPlates--;
+                    updateQuantityDisplay();
+                }
+            }
+            
+            function updateQuantityDisplay() {
+                // Update quantity display
+                document.getElementById('modalQuantity').textContent = currentQuantity;
+                
+                // Update plates display
+                document.getElementById('modalPlates').textContent = currentPlates;
+                
+                // Get the appropriate unit for this category
+                const unit = getUnitForCategory(currentFoodItem?.category);
+                const unitText = currentQuantity > 1 ? unit + 's' : unit;
+                
+                // Calculate total cost
+                const foodCost = currentFoodItem.price * currentQuantity;
+                const isFoodCategory = currentFoodItem?.category && currentFoodItem.category.toLowerCase() === 'food';
+                const isPlateItem = currentFoodItem?.name && currentFoodItem.name.toLowerCase() === 'plate';
+                const plateCost = (isFoodCategory && !isPlateItem) ? currentPlates * {{ plate_fee }} : 0;
+                const totalCost = foodCost + plateCost;
+                
+                // Update add to order button text with total cost
+                let buttonText = `Add ${currentQuantity} ${unitText} to order (₦${totalCost})`;
+                document.getElementById('addToOrderText').textContent = buttonText;
+                
+                // Update button states
+                const minusBtn = document.querySelector('button[onclick="decreaseQuantity()"]');
+                if (currentQuantity <= 1) {
+                    minusBtn.disabled = true;
+                    minusBtn.style.opacity = '0.4';
+                } else {
+                    minusBtn.disabled = false;
+                    minusBtn.style.opacity = '1';
+                }
+            }
+            
+            function addToOrder() {
+                if (currentFoodItem) {
+                    // Check if this is a food item that needs plates
+                    const isFoodCategory = currentFoodItem.category && currentFoodItem.category.toLowerCase() === 'food';
+                    const isPlateItem = currentFoodItem.name && currentFoodItem.name.toLowerCase() === 'plate';
+                    
+                    if (isFoodCategory && !isPlateItem) {
+                        // Add food item with plates
+                        addToCartWithPlates(currentFoodItem.id, currentQuantity, currentPlates);
+                    } else {
+                        // Add regular item
+                        addToCart(currentFoodItem.id, currentQuantity);
+                    }
+                    
+                    // Close modal
+                    closeFoodModal();
+                }
+            }
+            
+            function checkCartAndShowPlates(isFoodCategory, isPlateItem, plateSelector) {
+                // Fetch cart from server and check if plates should be shown
+                $.ajax({
+                    url: '/api/get-cart/',
+                    method: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            const cart = response.cart_items || [];
+                            const hasFoodItems = cart.some(item => item.category && item.category.toLowerCase() === 'food');
+                            
+                            if (isFoodCategory && !isPlateItem && !hasFoodItems) {
+                                // Show plate selector only for first food item
+                                plateSelector.style.display = 'flex';
+                            } else {
+                                plateSelector.style.display = 'none';
+                            }
+                        } else {
+                            // Default behavior if cart fetch fails
+                            if (isFoodCategory && !isPlateItem) {
+                                plateSelector.style.display = 'flex';
+                            } else {
+                                plateSelector.style.display = 'none';
+                            }
+                        }
+                    },
+                    error: function() {
+                        console.error('Failed to fetch cart');
+                        // Default behavior if cart fetch fails
+                        if (isFoodCategory && !isPlateItem) {
+                            plateSelector.style.display = 'flex';
+                        } else {
+                            plateSelector.style.display = 'none';
+                        }
+                    }
+                });
+            }
+            
+            function getCartFromSession() {
+                // This function is kept for compatibility but not used in the main flow
+                return [];
+            }
+            
+            function addToCartWithPlates(itemId, quantity, plates) {
+                // Make AJAX request to add item with plates
+                $.ajax({
+                    url: '/api/add-to-cart/',
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        item_id: itemId,
+                        quantity: quantity,
+                        plates: plates
+                    }),
+                    success: function(response) {
+                        if (response.success) {
+                            // Update cart count for all screen sizes
+                            updateCartCount(response.cart_count);
+                            
+                            // Show success message
+                            showNotification(response.message, 'success');
+                            
+                            // Refresh cart display if we're on the cart page
+                            if (typeof refreshCartDisplay === 'function') {
+                                refreshCartDisplay();
+                            }
+                        } else {
+                            showNotification(response.message, 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Add to cart error:', error);
+                        showNotification('Something went wrong. Please try again.', 'error');
+                    }
+                });
+            }
+            
+            function addToCart(itemId, quantity) {
+                // Make AJAX request to add regular item
+                $.ajax({
+                    url: '/api/add-to-cart/',
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        item_id: itemId,
+                        quantity: quantity
+                    }),
+                    success: function(response) {
+                        if (response.success) {
+                            // Update cart count for all screen sizes
+                            updateCartCount(response.cart_count);
+                            
+                            // Show success message
+                            showNotification(response.message, 'success');
+                            
+                            // Refresh cart display if we're on the cart page
+                            if (typeof refreshCartDisplay === 'function') {
+                                refreshCartDisplay();
+                            }
+                        } else {
+                            showNotification(response.message, 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Add to cart error:', error);
+                        showNotification('Something went wrong. Please try again.', 'error');
+                    }
+                });
+            }
+            
+            // Update cart count function
+            function updateCartCount(count) {
+                if (count !== undefined) {
+                    // Update all cart count elements (both desktop and mobile)
+                    $('.cart-count').text(count);
+                } else {
+                    // Fetch current cart count from server
+                    $.ajax({
+                        url: '/api/get-cart/',
+                        method: 'GET',
+                        success: function(response) {
+                            // Update all cart count elements (both desktop and mobile)
+                            $('.cart-count').text(response.cart_count || 0);
+                        },
+                        error: function() {
+                            // Fallback to 0 for all cart count elements
+                            $('.cart-count').text(0);
+                        }
+                    });
+                }
+            }
+            
+            // Notification function
+            function showNotification(message, type = 'info') {
+                const iconClass = {
+                    'success': 'fa-check-circle',
+                    'error': 'fa-exclamation-circle',
+                    'warning': 'fa-exclamation-triangle',
+                    'info': 'fa-info-circle'
+                }[type] || 'fa-info-circle';
+                
+                const notification = $(`
+                    <div class="notification notification-${type}" style="position: fixed; top: 20px; right: 20px; background: ${type === 'success' ? '#d4edda' : type === 'error' ? '#f8d7da' : '#d1ecf1'}; color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#0c5460'}; padding: 12px 16px; border-radius: 8px; border: 1px solid ${type === 'success' ? '#c3e6cb' : type === 'error' ? '#f5c6cb' : '#bee5eb'}; z-index: 9999; max-width: 300px;">
+                        <i class="fas ${iconClass}"></i>
+                        <span style="margin-left: 8px;">${message}</span>
+                        <button onclick="$(this).parent().fadeOut()" style="background: none; border: none; margin-left: 8px; cursor: pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `);
+                
+                $('body').append(notification);
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    notification.fadeOut(() => notification.remove());
+                }, 5000);
+            }
+            
+            // Close food modal when clicking outside
+            $(document).click(function(e) {
+                if ($(e.target).hasClass('modal') && $(e.target).attr('id') === 'foodModal') {
+                    closeFoodModal();
+                }
+            });
+            
+            // Handle create account form submission
+            $('#createAccountForm').on('submit', function(e) {
+                e.preventDefault();
+                console.log('Create account form submitted - validation starting');
+                
+                // Clear previous errors FIRST
+                $('.form-input').removeClass('error');
+                $('.error-message').remove();
+                
+                const firstName = $('#firstName').val().trim();
+                const lastName = $('#lastName').val().trim();
+                const email = $('#email').val().trim();
+                const phoneNumber = $('#createPhoneNumber').val().trim();
+                
+                console.log('Phone number:', phoneNumber, 'Length:', phoneNumber.length);
+                
+                // Get button elements before validation
+                const submitBtn = $(this).find('button[type="submit"]');
+                const originalText = submitBtn.text();
+                
+                // Basic validation
+                let hasErrors = false;
+                
+                if (!firstName) {
+                    showFieldError('#firstName', 'First name is required');
+                    hasErrors = true;
+                }
+                
+                if (!lastName) {
+                    showFieldError('#lastName', 'Last name is required');
+                    hasErrors = true;
+                }
+                
+                if (!email) {
+                    showFieldError('#email', 'Email address is required');
+                    hasErrors = true;
+                } else if (!isValidEmail(email)) {
+                    showFieldError('#email', 'Please enter a valid email address');
+                    hasErrors = true;
+                }
+                
+                if (!phoneNumber) {
+                    showFieldError('#createPhoneNumber', 'Phone number is required');
+                    hasErrors = true;
+                } else if (phoneNumber.length !== 11) {
+                    showFieldError('#createPhoneNumber', 'Please type a valid phone number');
+                    hasErrors = true;
+                }
+                
+                if (hasErrors) {
+                    return; // Stop form submission
+                }
+                
+                // Show loading state only if validation passes
+                submitBtn.prop('disabled', true).text('Creating...');
+                
+                // Make AJAX request to request OTP for account creation
+                $.ajax({
+                    url: '/api/accounts/request-otp/',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    data: {
+                        first_name: firstName,
+                        last_name: lastName,
+                        email: email,
+                        phone_number: phoneNumber
+                    },
+                    success: function(response) {
+                        showNotification('OTP sent to your phone! Please check your messages.', 'success');
+                        
+                        // Show OTP verification modal with user data
+                        const userData = {
+                            first_name: firstName,
+                            last_name: lastName,
+                            email: email,
+                            phone_number: phoneNumber
+                        };
+                        showOtpModal(phoneNumber, userData);
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'An error occurred. Please try again.';
+                        
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage = xhr.responseJSON.error;
+                            
+                            // If user already exists, show as field error instead of notification
+                            if (xhr.responseJSON.user_exists) {
+                                // Check if error is about email or phone number
+                                if (errorMessage.includes('email')) {
+                                    showFieldError('#email', errorMessage);
+                                } else {
+                                    showFieldError('#createPhoneNumber', errorMessage);
+                                }
+                                return; // Don't show notification, just field error
+                            }
+                        } else if (xhr.responseJSON && xhr.responseJSON.detail) {
+                            errorMessage = xhr.responseJSON.detail;
+                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        
+                        showNotification(errorMessage, 'error');
+                    },
+                    complete: function() {
+                        // Reset button state
+                        submitBtn.prop('disabled', false).text(originalText);
+                    }
+                });
+            });
+            
+            // Email validation helper function
+            function isValidEmail(email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            }
+            
+            // Get CSRF token helper function
+            function getCsrfToken() {
+                return $('[name=csrfmiddlewaretoken]').val();
+            }
+            
+            // Update profile UI based on authentication status
+            function updateProfileUI() {
+                const accessToken = localStorage.getItem('access_token');
+                console.log('updateProfileUI called, accessToken:', accessToken ? 'exists' : 'not found');
+                
+                if (accessToken) {
+                    console.log('Fetching profile with token...');
+                    // User is authenticated - fetch profile and update UI
+                    $.ajax({
+                        url: '/api/accounts/profile/',
+                        type: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'X-CSRFToken': getCsrfToken()
+                        },
+                        success: function(response) {
+                            console.log('Profile fetched successfully:', response);
+                            // Update profile info
+                            $('#profile-name, #profile-name-mobile').text(response.first_name || 'User');
+                            $('#profile-email, #profile-email-mobile').hide();
+                            
+                            // Update menu items
+                            const authenticatedMenu = `
+                                <a href="/profile/" class="profile-menu-item">
+                                    <i class="fas fa-user"></i>
+                                    <span>Profile</span>
+                                </a>
+                                <a href="/order-history/" class="profile-menu-item">
+                                    <i class="fas fa-shopping-bag"></i>
+                                    <span>Manage Orders</span>
+                                </a>
+                                <a href="#" class="profile-menu-item logout-item" onclick="logout()">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                    <span>Log Out</span>
+                                </a>
+                            `;
+                            
+                            $('#profile-menu, #profile-menu-mobile').html(authenticatedMenu);
+                            console.log('Profile UI updated to authenticated state');
+                        },
+                        error: function(xhr) {
+                            console.log('Profile fetch error:', xhr);
+                            // Token might be invalid, clear it
+                            localStorage.removeItem('access_token');
+                            localStorage.removeItem('refresh_token');
+                            updateProfileUI(); // Recursive call to show guest state
+                        }
+                    });
+                } else {
+                    console.log('No access token, showing guest state');
+                    // User is not authenticated - show guest state
+                    $('#profile-name, #profile-name-mobile').text('Guest');
+                    $('#profile-email, #profile-email-mobile').hide();
+                    
+                    const guestMenu = `
+                        <a href="#" class="profile-menu-item" onclick="showLoginModal()">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Log In</span>
+                        </a>
+                        <a href="#" class="profile-menu-item" onclick="showSignupModal()">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Sign Up</span>
+                        </a>
+                    `;
+                    
+                    $('#profile-menu, #profile-menu-mobile').html(guestMenu);
+                    console.log('Profile UI updated to guest state');
+                }
+            }
+            
+            // Logout function -> open styled confirm modal
+            function logout() {
+                $('#logoutConfirmModal').addClass('active');
+                $('body').addClass('modal-open');
+            }
+
+            function closeLogoutConfirm() {
+                $('#logoutConfirmModal').removeClass('active');
+                $('body').removeClass('modal-open');
+            }
+
+            function performLogout() {
+                const refreshToken = localStorage.getItem('refresh_token');
+                
+                if (refreshToken) {
+                    $.ajax({
+                        url: '/api/accounts/logout/',
+                        type: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCsrfToken()
+                        },
+                        data: {
+                            refresh: refreshToken
+                        },
+                        success: function() {
+                            localStorage.removeItem('access_token');
+                            localStorage.removeItem('refresh_token');
+                            updateProfileUI();
+                            
+                            // Update checkout button if on cart page
+                            if (typeof updateCheckoutButton === 'function') {
+                                updateCheckoutButton();
+                            }
+                            
+                            // If on checkout page, redirect to cart
+                            if (window.location.pathname === '/checkout/') {
+                                window.location.href = '/cart/';
+                            }
+                            
+                            showNotification('Logged out successfully', 'success');
+                        },
+                        error: function() {
+                            // Even if logout fails, clear local storage
+                            localStorage.removeItem('access_token');
+                            localStorage.removeItem('refresh_token');
+                            updateProfileUI();
+                            
+                            // Update checkout button if on cart page
+                            if (typeof updateCheckoutButton === 'function') {
+                                updateCheckoutButton();
+                            }
+                            
+                            // If on checkout page, redirect to cart
+                            if (window.location.pathname === '/checkout/') {
+                                window.location.href = '/cart/';
+                            }
+                            
+                            showNotification('Logged out successfully', 'success');
+                        },
+                        complete: function() {
+                            closeLogoutConfirm();
+                        }
+                    });
+                } else {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    updateProfileUI();
+                    showNotification('Logged out successfully', 'success');
+                    closeLogoutConfirm();
+                }
+            }
+            
+            // OTP Modal Functions
+            let otpTimer = null;
+            let otpTimeLeft = 60;
+            let currentPhoneNumber = '';
+            let currentUserData = {};
+            
+            function showOtpModal(phoneNumber, userData) {
+                currentPhoneNumber = phoneNumber;
+                currentUserData = userData;
+                closeCreateAccountModal();
+                $('#otpModal').addClass('active');
+                $('body').addClass('modal-open');
+                
+                // Update phone number in subtitle
+                $('.phone-number-link').text(phoneNumber);
+                
+                // Start countdown timer
+                startOtpTimer();
+                
+                // Focus first OTP input
+                setTimeout(() => {
+                    $('#otp1').focus();
+                }, 100);
+            }
+            
+            function closeOtpModal() {
+                $('#otpModal').removeClass('active');
+                $('body').removeClass('modal-open');
+                
+                // Reset form
+                $('#otpForm')[0].reset();
+                $('.otp-input').removeClass('error');
+                $('.error-message').remove();
+                
+                // Clear timer
+                if (otpTimer) {
+                    clearInterval(otpTimer);
+                    otpTimer = null;
+                }
+                otpTimeLeft = 60;
+                
+                // Clear redirect flag if OTP modal is closed without successful verification
+                localStorage.removeItem('redirect_after_login');
+                $('#resendTimer').text('60s');
+            }
+            
+            function startOtpTimer() {
+                otpTimeLeft = 60;
+                $('.resend-link').hide();
+                $('#resendTimer').show().text('Resend in 60s');
+                
+                otpTimer = setInterval(() => {
+                    otpTimeLeft--;
+                    $('#resendTimer').text('Resend in ' + otpTimeLeft + 's');
+                    
+                    if (otpTimeLeft <= 0) {
+                        clearInterval(otpTimer);
+                        otpTimer = null;
+                        $('.resend-link').show();
+                        $('#resendTimer').hide();
+                    }
+                }, 1000);
+            }
+            
+            function resendOTP() {
+                if (!currentPhoneNumber || !currentUserData) {
+                    showNotification('Phone number not found. Please try again.', 'error');
+                    return;
+                }
+                
+                // Disable resend link and start timer
+                $('.resend-link').hide();
+                $('#resendTimer').show();
+                
+                // Start 60-second countdown
+                let timeLeft = 60;
+                otpTimer = setInterval(() => {
+                    $('#resendTimer').text('Resend in ' + timeLeft + 's');
+                    timeLeft--;
+                    
+                    if (timeLeft < 0) {
+                        clearInterval(otpTimer);
+                        otpTimer = null;
+                        $('.resend-link').show();
+                        $('#resendTimer').hide();
+                    }
+                }, 1000);
+                
+                // Send resend request
+                $.ajax({
+                    url: '/api/accounts/request-otp/',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    data: currentUserData,
+                    success: function(response) {
+                        console.log('OTP resent:', response);
+                        showNotification('Code resent successfully!', 'success');
+                    },
+                    error: function(xhr) {
+                        console.log('Resend OTP error:', xhr);
+                        let errorMessage = 'Failed to resend code. Please try again.';
+                        
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage = xhr.responseJSON.error;
+                        }
+                        
+                        showNotification(errorMessage, 'error');
+                        
+                        // Reset timer on error
+                        clearInterval(otpTimer);
+                        otpTimer = null;
+                        $('.resend-link').show();
+                        $('#resendTimer').hide();
+                    }
+                });
+            }
+            
+            function editPhoneNumber() {
+                // Close OTP modal and go back to create account modal
+                closeOtpModal();
+                showSignupModal();
+            }
+            
+            // OTP Input Handling
+            $('.otp-input').on('input', function() {
+                const value = $(this).val();
+                const currentIndex = parseInt($(this).attr('id').replace('otp', ''));
+                
+                // Only allow numbers
+                if (!/^\d$/.test(value)) {
+                    $(this).val('');
+                    return;
+                }
+                
+                // Move to next input if current is filled
+                if (value && currentIndex < 5) {
+                    $(`#otp${currentIndex + 1}`).focus();
+                }
+            });
+            
+            // Handle backspace in OTP inputs
+            $('.otp-input').on('keydown', function(e) {
+                const currentIndex = parseInt($(this).attr('id').replace('otp', ''));
+                
+                if (e.key === 'Backspace' && !$(this).val() && currentIndex > 1) {
+                    $(`#otp${currentIndex - 1}`).focus();
+                }
+            });
+            
+            // Handle OTP form submission
+            $('#otpForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                // Get OTP values
+                const otp1 = $('#otp1').val();
+                const otp2 = $('#otp2').val();
+                const otp3 = $('#otp3').val();
+                const otp4 = $('#otp4').val();
+                const otp5 = $('#otp5').val();
+                
+                const otpCode = otp1 + otp2 + otp3 + otp4 + otp5;
+                console.log('OTP submitted:', otpCode);
+                console.log('User data:', currentUserData);
+                console.log('Phone number:', currentPhoneNumber);
+                
+                // Validate OTP
+                if (otpCode.length !== 5) {
+                    showFieldError('#otp1', 'Please enter the complete 5-digit code');
+                    return;
+                }
+                
+                // Clear previous errors
+                $('.otp-input').removeClass('error');
+                $('.error-message').remove();
+                
+                // Show loading state
+                const submitBtn = $('.otp-btn');
+                const originalText = submitBtn.text();
+                submitBtn.prop('disabled', true).text('Verifying...');
+                
+                // Make AJAX request to verify OTP and create account
+                $.ajax({
+                    url: '/api/accounts/verify-otp/',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    data: {
+                        first_name: currentUserData.first_name,
+                        last_name: currentUserData.last_name,
+                        email: currentUserData.email,
+                        phone_number: currentPhoneNumber,
+                        otp: otpCode,
+                        role: 'customer'
+                    },
+                    success: function(response) {
+                        console.log('OTP verification success:', response);
+                        
+                        // Store tokens
+                        if (response.refresh) {
+                            localStorage.setItem('refresh_token', response.refresh);
+                            console.log('Refresh token stored');
+                        }
+                        if (response.access) {
+                            localStorage.setItem('access_token', response.access);
+                            console.log('Access token stored');
+                        }
+                        
+                        // Show appropriate message based on response
+                        const message = response.message || 'Account created successfully! Welcome!';
+                        showNotification(message, 'success');
+                        
+                        // Close OTP modal
+                        closeOtpModal();
+                        
+                        // Update UI to show logged-in state
+                        console.log('Updating profile UI...');
+                        updateProfileUI();
+                        
+                        // Update checkout button if on cart page
+                        if (typeof updateCheckoutButton === 'function') {
+                            updateCheckoutButton();
+                        }
+                        
+                        // Check if user was trying to checkout and redirect
+                        const redirectAfterLogin = localStorage.getItem('redirect_after_login');
+                        if (redirectAfterLogin === 'checkout') {
+                            localStorage.removeItem('redirect_after_login');
+                            // Redirect to checkout with JWT token
+                            window.location.href = '/checkout/?jwt_token=' + response.access;
+                        }
+                    },
+                    error: function(xhr) {
+                        console.log('OTP verification error:', xhr);
+                        console.log('Response:', xhr.responseJSON);
+                        
+                        let errorMessage = 'Verification failed. Please try again.';
+                        
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage = xhr.responseJSON.error;
+                        } else if (xhr.responseJSON && xhr.responseJSON.detail) {
+                            errorMessage = xhr.responseJSON.detail;
+                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        
+                        console.log('Error message:', errorMessage);
+                        
+                        // Show error on OTP inputs
+                        $('.otp-input').addClass('error');
+                        showFieldError('#otp1', errorMessage);
+                        showNotification(errorMessage, 'error');
+                    },
+                    complete: function() {
+                        // Reset button state
+                        submitBtn.prop('disabled', false).text(originalText);
+                    }
+                });
+            });
+            
+            </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
+

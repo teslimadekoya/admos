@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test shadcn/ui Styles</title>
+    <link rel="stylesheet" href="/static/dashboard/css/tailwind.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-background text-foreground p-8">
+    <div class="container mx-auto">
+        <h1 class="text-3xl font-bold mb-6">shadcn/ui Style Test</h1>
+        
+        <!-- Test Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Test Card 1</h3>
+                    <p class="text-muted-foreground">This is a test card</p>
+                </div>
+                <div class="card-content">
+                    <p>Card content goes here</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Test Card 2</h3>
+                    <p class="text-muted-foreground">Another test card</p>
+                </div>
+                <div class="card-content">
+                    <p>More card content</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Buttons -->
+        <div class="flex gap-4 mb-8">
+            <button class="btn btn-primary">Primary Button</button>
+            <button class="btn btn-secondary">Secondary Button</button>
+            <button class="btn btn-outline">Outline Button</button>
+            <button class="btn btn-destructive">Destructive Button</button>
+        </div>
+        
+        <!-- Test Input -->
+        <div class="mb-8">
+            <input type="text" placeholder="Test input field" class="input w-full max-w-md">
+        </div>
+        
+        <!-- Test Badge -->
+        <div class="flex gap-2 mb-8">
+            <span class="badge badge-default">Default Badge</span>
+            <span class="badge badge-secondary">Secondary Badge</span>
+            <span class="badge badge-destructive">Destructive Badge</span>
+        </div>
+        
+        <!-- Test Alert -->
+        <div class="alert alert-default mb-8">
+            <div class="alert-title">Test Alert</div>
+            <div class="alert-description">This is a test alert message</div>
+        </div>
+        
+        <!-- Color Test -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="p-4 bg-primary text-primary-foreground rounded-lg text-center">
+                Primary
+            </div>
+            <div class="p-4 bg-secondary text-secondary-foreground rounded-lg text-center">
+                Secondary
+            </div>
+            <div class="p-4 bg-muted text-muted-foreground rounded-lg text-center">
+                Muted
+            </div>
+            <div class="p-4 bg-destructive text-destructive-foreground rounded-lg text-center">
+                Destructive
+            </div>
+        </div>
+    </div>
+</body>
+</html>

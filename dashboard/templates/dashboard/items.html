@@ -1,0 +1,764 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Menu Items - Admos Place{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">Menu Items</h1>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="search-filter-bar">
+            <div class="search-controls">
+                <form method="get" class="search-form">
+                    <div class="search-input-group">
+                        <input type="text" name="search" placeholder="Search items..." value="{{ search_query }}" class="search-input">
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        {% if search_query %}
+                        <a href="{% url 'dashboard:items' %}?category={{ category_filter }}" class="clear-search-btn">
+                            <i class="fas fa-times"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                    <input type="hidden" name="category" value="{{ category_filter }}">
+                </form>
+            </div>
+            <div class="filter-controls">
+                <label for="category-filter">Category:</label>
+                <select id="category-filter" onchange="changeCategoryFilter(this.value)">
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if user.role != 'accountant' %}
+            <a href="{% url 'dashboard:add_item' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add New Item
+            </a>
+            {% endif %}
+    </div>
+
+    <!-- Items Grid -->
+    <div class="items-grid">
+                    {% for item in items %}
+        <div class="item-card">
+            <div class="item-header">
+                <div class="item-image-container">
+                                {% if item.image %}
+                                    <img src="{{ item.image.url }}" alt="{{ item.name }}" class="item-image">
+                                {% elif item.image_url %}
+                                    <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-image">
+                                {% else %}
+                                    <div class="item-image-placeholder">
+                                        <i class="fas fa-utensils"></i>
+                                    </div>
+                                {% endif %}
+                </div>
+                <div class="item-info">
+                    <h3 class="item-name">{{ item.name }}</h3>
+                    <p class="item-category">{{ item.category.name }}</p>
+                                    {% if item.description %}
+                        <p class="item-description">{{ item.description|truncatewords:15 }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+            
+            <div class="item-details">
+                <div class="detail-row">
+                    <span class="detail-label">Price:</span>
+                    <span class="detail-value price">₦{{ item.price|floatformat:0 }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Quantity:</span>
+                    <span class="detail-value quantity">{{ item.portions }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status:</span>
+                            {% if item.portions > 0 %}
+                                <span class="status-badge status-success">Available</span>
+                            {% else %}
+                                <span class="status-badge status-error">Out of Stock</span>
+                            {% endif %}
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Last Updated:</span>
+                    <span class="detail-value date">{{ item.updated_at|date:"M j, Y g:i A" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Updated By:</span>
+                    <span class="detail-value user">
+                        {% if item.updated_by %}
+                            {{ item.updated_by.first_name }} {{ item.updated_by.last_name }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+                        {% if user.role != 'accountant' %}
+            <div class="item-actions">
+                <a href="{% url 'dashboard:edit_item' item.id %}" class="btn btn-sm btn-outline edit-btn" title="Edit Item">
+                                <i class="fas fa-edit"></i>
+                    Edit
+                            </a>
+                            <form method="post" action="{% url 'dashboard:delete_item' item.id %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this item?')">
+                                {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline delete-btn" title="Delete Item">
+                                    <i class="fas fa-trash-alt"></i>
+                        Delete
+                                </button>
+                            </form>
+            </div>
+                        {% endif %}
+        </div>
+                    {% empty %}
+        <div class="empty-state-card">
+            <div class="empty-content">
+                <div class="empty-icon">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <h3>No items found</h3>
+                <p>{% if search_query or category_filter %}No items match your current filters.{% else %}Start by adding your first menu item to get started.{% endif %}</p>
+                {% if search_query or category_filter %}
+                <a href="{% url 'dashboard:items' %}" class="btn btn-primary">
+                    <i class="fas fa-times"></i> Clear Filters
+                </a>
+                {% elif user.role != 'accountant' %}
+                <a href="{% url 'dashboard:add_item' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Your First Item
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if items %}
+        <div class="pagination">
+            <div class="pagination-info">
+                Total: {{ items|length }} items
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+/* Page Header Styles */
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-title {
+    color: #1C1B1C !important;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-title i {
+    color: #1C1B1C !important;
+    fill: #1C1B1C !important;
+    font-size: 1.5rem;
+}
+
+.page-title i svg {
+    fill: #1C1B1C !important;
+    stroke: #1C1B1C !important;
+}
+
+/* Search and Filter Bar - High Specificity Override */
+.dashboard-page .search-filter-bar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1rem !important;
+    margin-bottom: 2rem !important;
+    padding: 1.5rem !important;
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    width: 100% !important;
+}
+
+.dashboard-page .search-filter-bar .search-controls {
+    flex: 1 !important;
+    min-width: 0 !important;
+    margin-bottom: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+}
+
+.search-form {
+    margin: 0;
+    width: 100%;
+}
+
+.search-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.search-input {
+    width: 100% !important;
+    padding: 1rem 1.25rem;
+    padding-right: 4rem;
+    border: 2px solid #e5e7eb !important;
+    border-radius: 12px;
+    font-size: 1rem;
+    background: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+    outline: none !important;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.search-input:focus {
+    outline: none !important;
+    border: 2px solid #C41115 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.search-input:focus-visible {
+    outline: none !important;
+}
+
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration {
+    -webkit-appearance: none;
+}
+
+.search-input::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+}
+
+.search-btn {
+    position: absolute;
+    right: 0.75rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #C41115 0%, #a00e12 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(196, 17, 21, 0.3);
+}
+
+.search-btn:hover {
+    background: linear-gradient(135deg, #a00e12 0%, #8a0c0f 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(196, 17, 21, 0.4);
+}
+
+.search-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(196, 17, 21, 0.3);
+}
+
+.clear-search-btn {
+    position: absolute;
+    right: 3.5rem;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clear-search-btn:hover {
+    background: #e5e7eb;
+    color: #374151;
+    border-color: #9ca3af;
+}
+
+.filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: transparent;
+    padding: 0.5rem 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.filter-controls:hover {
+    /* No hover effects needed without background */
+}
+
+.filter-controls label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1C1B1C;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-controls label::before {
+    content: '🏷️';
+    font-size: 1rem;
+}
+
+.filter-controls select {
+    padding: 0.625rem 2rem 0.625rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 150px;
+    flex-shrink: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+}
+
+.filter-controls select:focus {
+    outline: none;
+    border-color: #C41115;
+    box-shadow: 0 0 0 3px rgba(196, 17, 21, 0.1);
+}
+
+.filter-controls select:hover {
+    border-color: #9ca3af;
+}
+
+/* Items Grid */
+.items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+/* Item Card */
+.item-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: #C41115;
+}
+
+/* Item Header */
+.item-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.item-image-container {
+    flex-shrink: 0;
+}
+
+.item-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 2px solid #f3f4f6;
+}
+
+.item-image-placeholder {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #fef8f8 0%, #ffffff 100%);
+    border: 2px solid #1C1B1C;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1C1B1C;
+    font-size: 1.25rem;
+}
+
+.item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.item-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #000000;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.3;
+}
+
+.item-category {
+    font-size: 0.875rem;
+    color: #676267;
+    margin: 0 0 0.5rem 0;
+    font-weight: 500;
+}
+
+.item-description {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Item Details */
+.item-details {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #f3f4f6;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.detail-label {
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.detail-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.detail-value.price {
+    color: #C41115;
+}
+
+.detail-value.quantity {
+    color: #1C1B1C;
+}
+
+.detail-value.date {
+    color: #6b7280;
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
+.detail-value.user {
+    color: #1C1B1C;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* Status Badge */
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.status-success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.status-error {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+/* Item Actions */
+.item-actions {
+    display: flex;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+    align-items: center;
+}
+
+.item-actions form {
+    display: inline-flex;
+    margin: 0;
+    padding: 0;
+    height: 36px;
+    align-items: center;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 1px solid #d1d5db;
+    cursor: pointer;
+    background: transparent;
+    color: #000000;
+    height: 36px;
+    line-height: 1;
+    box-sizing: border-box;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid #676267;
+    color: #676267;
+}
+
+.btn-outline:hover {
+    background: rgba(196, 17, 21, 0.1);
+    border-color: #C41115;
+    color: #C41115;
+    transform: translateY(-1px);
+}
+
+.edit-btn {
+    background: transparent !important;
+    border: 1px solid #676267 !important;
+    color: #676267 !important;
+}
+
+.edit-btn:hover {
+    background: rgba(196, 17, 21, 0.1) !important;
+    border-color: #C41115 !important;
+    color: #C41115 !important;
+}
+
+.delete-btn {
+    background: transparent !important;
+    border: 1px solid #676267 !important;
+    color: #676267 !important;
+}
+
+.delete-btn:hover {
+    background: rgba(196, 17, 21, 0.1) !important;
+    border-color: #C41115 !important;
+    color: #C41115 !important;
+}
+
+/* Empty State */
+.empty-state-card {
+    grid-column: 1 / -1;
+    background: white;
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.empty-content {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    background: #f9fafb;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+}
+
+.empty-icon i {
+    font-size: 2rem;
+    color: #1C1B1C !important;
+    fill: #1C1B1C !important;
+}
+
+.empty-icon i svg {
+    fill: #1C1B1C !important;
+    stroke: #1C1B1C !important;
+}
+
+.empty-content h3 {
+    color: #000000;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+}
+
+.empty-content p {
+    color: #374151;
+    margin: 0 0 1.5rem 0;
+    line-height: 1.5;
+}
+
+/* Pagination */
+.pagination {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.pagination-info {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+/* Add New Item Button Alignment - Match Categories Page */
+.search-filter-bar .btn-primary {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    align-self: center !important;
+    /* Use exact same styling as categories page */
+    background: var(--primary-color) !important;
+    color: white !important;
+    border: none !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 8px !important;
+    font-size: 0.9rem !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    text-decoration: none !important;
+}
+
+.search-filter-bar .btn-primary:hover {
+    background: #A00E12 !important;
+    transform: translateY(-1px) !important;
+    text-decoration: none !important;
+}
+
+/* Remove underline from buttons */
+.btn, .btn-primary, .btn-secondary {
+    text-decoration: none !important;
+}
+
+.btn:hover, .btn-primary:hover, .btn-secondary:hover {
+    text-decoration: none !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .search-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.5rem;
+        padding: 1.25rem;
+    }
+    
+    .search-controls {
+        max-width: none;
+    }
+    
+    .filter-controls {
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+    }
+    
+    .filter-controls select {
+        min-width: 120px;
+    }
+    
+    .items-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .item-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .btn-sm {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .item-header {
+        gap: 0.75rem;
+    }
+    
+    .item-image, .item-image-placeholder {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+@media (max-width: 480px) {
+    .item-card {
+        padding: 1rem;
+    }
+    
+    .empty-state-card {
+        padding: 2rem 1rem;
+    }
+    
+    .search-filter-bar {
+        padding: 0.75rem;
+    }
+}
+</style>
+
+<script>
+function changeCategoryFilter(categoryValue) {
+    const url = new URL(window.location);
+    url.searchParams.set('category', categoryValue);
+    window.location.href = url.toString();
+}
+</script>
+{% endblock %}

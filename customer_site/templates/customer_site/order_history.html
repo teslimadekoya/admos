@@ -1,0 +1,576 @@
+{% extends 'customer_site/base.html' %}
+{% load static %}
+
+{% block title %}My Orders - {{ restaurant_name }}{% endblock %}
+
+{% block content %}
+<!-- Orders Page -->
+<div class="orders-page">
+    <div class="container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1 class="page-title">Order History</h1>
+        </div>
+
+        <!-- Orders Content -->
+        <div class="orders-content">
+            {% if orders %}
+                <!-- Orders Cards -->
+                <div class="orders-cards-container">
+                    {% for order in orders %}
+                        <div class="order-card" data-status="{{ order.status|lower|slugify }}">
+                            <!-- Order Header -->
+                            <div class="order-header">
+                                <div class="order-id">#{{ order.id }}</div>
+                                <div class="order-date">
+                                    <span class="date-primary">{{ order.created_at|date:"M d, Y" }}</span>
+                                    <span class="date-secondary">{{ order.created_at|date:"g:i A" }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Order Status:</span>
+                                    <span class="detail-value">
+                                        <span class="status-badge status-{{ order.status|lower|slugify }}">{{ order.status }}</span>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Order Details -->
+                            <div class="order-details">
+                                <div class="detail-row">
+                                    <span class="detail-label">Total Cost:</span>
+                                    <span class="detail-value">₦{{ order.total|floatformat:0 }}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Order Items Summary -->
+                            <div class="order-items-summary">
+                                <div class="detail-label">What You Ordered:</div>
+                                <div class="items-list">
+                                    {% for bag in order.bags %}
+                                        {% for item in bag.items %}
+                                            <div class="item-name">{{ item.name }} ({{ item.portions }} {{ item.portions|pluralize:"portion,portions" }})</div>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <!-- Empty State -->
+                <div class="empty-cart">
+                    <div class="empty-cart-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108" fill="none">
+                          <path d="M23.625 6.75C25.489 6.75 27 8.26104 27 10.125V30.375C27 34.7835 29.8175 38.5339 33.75 39.9239V10.125C33.75 8.26104 35.261 6.75 37.125 6.75C38.989 6.75 40.5 8.26104 40.5 10.125V39.9239C44.4325 38.5339 47.25 34.7835 47.25 30.375V10.125C47.25 8.26104 48.761 6.75 50.625 6.75C52.489 6.75 54 8.26104 54 10.125V30.375C54 38.539 48.2026 45.3489 40.5 46.9124V97.875C40.5 99.739 38.989 101.25 37.125 101.25C35.261 101.25 33.75 99.739 33.75 97.875V46.9124C26.0474 45.3489 20.25 38.539 20.25 30.375V10.125C20.25 8.26104 21.761 6.75 23.625 6.75ZM70.7302 16.7302C71.8039 15.6566 73.0143 14.8239 74.25 14.273V47.25H67.5V23.625C67.5 21.3477 68.6727 18.7878 70.7302 16.7302ZM74.25 54V97.875C74.25 99.739 75.761 101.25 77.625 101.25C79.489 101.25 81 99.739 81 97.875V10.125C81 8.26104 79.489 6.75 77.625 6.75C73.1523 6.75 68.9622 8.95235 65.9573 11.9573C62.9523 14.9622 60.75 19.1523 60.75 23.625V50.625C60.75 52.489 62.261 54 64.125 54H74.25Z" fill="#C41115"/>
+                        </svg>
+                    </div>
+                    <h3>No Orders Yet</h3>
+                    <p>You haven't placed any orders yet. Start exploring our delicious menu!</p>
+                    <div style="margin-top:16px;">
+                        <a href="{% url 'customer_site:homepage' %}" class="btn btn-primary">
+                            Browse Menu
+                        </a>
+                        <button onclick="loadOrdersManually()" class="btn btn-outline" style="margin-left: 10px;">
+                            Load My Orders
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Orders Page - Clean and Simple */
+.orders-page {
+    min-height: 100vh;
+    background-color: #ffffff;
+}
+
+/* Container Override - Ensure proper centering and max-width */
+.container {
+    max-width: 1440px !important;
+    margin: 0 auto !important;
+    padding: 0 64px !important;
+}
+
+/* Responsive container overrides */
+@media (max-width: 1024px) {
+    .container {
+        padding: 0 12px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 0 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 12px !important;
+    }
+}
+
+/* Page Header */
+.page-header {
+    padding: 40px 0 30px 0;
+    text-align: left;
+}
+
+.page-title {
+    color: #1C1B1C;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+}
+
+.page-subtitle {
+    color: #6B7280;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    margin: 0;
+}
+
+/* Orders Cards Container */
+.orders-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 60px;
+}
+
+/* Order Card */
+.order-card {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 20px 0;
+    box-shadow: none;
+    transition: none;
+}
+
+.order-card:hover {
+    box-shadow: none;
+    border-color: transparent;
+}
+
+/* Order Header */
+.order-header {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.order-id-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.order-id {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1C1B1C;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Order Details */
+.order-details {
+    margin-bottom: 20px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+.detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.detail-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #6B7280;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1C1B1C;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Order Items Summary */
+.order-items-summary {
+    margin-bottom: 20px;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    border-bottom: 1px solid #E5E7EB;
+    padding-bottom: 20px;
+}
+
+/* Remove border from last order card */
+.order-card:last-child .order-items-summary {
+    border-bottom: none;
+}
+
+.order-items-summary .detail-label {
+    margin-bottom: 20px;
+    display: block;
+}
+
+.items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.item-name {
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.4;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+
+.order-date {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.date-primary {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1C1B1C;
+    line-height: 1.2;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.date-secondary {
+    font-size: 12px;
+    color: #6B7280;
+    line-height: 1.2;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Status Styles */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.status-pending {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.status-confirmed {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+
+.status-preparing {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.status-on-the-way {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.status-delivered {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+
+/* Empty State */
+.empty-cart {
+    text-align: center;
+    padding: 80px 0;
+}
+
+.empty-cart-icon {
+    margin-bottom: 24px;
+}
+
+.empty-cart h3 {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1C1B1C;
+    margin: 0 0 8px 0;
+}
+
+.empty-cart p {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    color: #6B7280;
+    margin: 0 0 24px 0;
+}
+
+/* Responsive Design */
+    
+    .page-header {
+        padding: 30px 0 20px 0;
+    }
+    
+    .page-title {
+        font-size: 24px;
+    }
+    
+    
+    .order-card {
+        padding: 20px 0;
+    }
+    
+    .order-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .order-id-status {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 20px !important;
+        justify-content: flex-start !important;
+    }
+    
+    .order-status {
+        margin-bottom: 0;
+    }
+    
+    .order-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-title {
+        font-size: 20px;
+    }
+    
+    .order-card {
+        padding: 16px 0;
+    }
+}
+</style>
+
+<script>
+// Order filtering functionality
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Order history page loaded');
+    
+    // Check if we have orders to display
+    const ordersContainer = document.querySelector('.orders-content');
+    const ordersList = document.querySelector('.orders-list');
+    
+    if (ordersContainer && !ordersList) {
+        console.log('No orders found, attempting to load orders automatically');
+        // Try to load orders automatically if user is logged in
+        const accessToken = localStorage.getItem('access_token');
+        if (accessToken) {
+            console.log('Access token found, loading orders automatically');
+            loadOrdersManually();
+        } else {
+            console.log('No access token found, showing empty state');
+        }
+    }
+});
+
+function loadOrdersManually() {
+    console.log('loadOrdersManually called');
+    const accessToken = localStorage.getItem('access_token');
+    console.log('Access token found:', !!accessToken);
+    
+    if (!accessToken) {
+        alert('Please log in to view your orders');
+        return;
+    }
+    
+    // Show loading state
+    const ordersContent = document.querySelector('.orders-content');
+    if (ordersContent) {
+        ordersContent.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 2rem; color: #667eea;">⏳</div>
+                <p>Loading your orders...</p>
+            </div>
+        `;
+    }
+    
+    console.log('Making API call to /api/user-orders/');
+    
+    // Make API call to get orders
+    fetch('/api/user-orders/', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log('API response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('API response data:', data);
+        if (data.success && data.orders && data.orders.length > 0) {
+            console.log('Orders found, rendering orders');
+            renderOrders(data.orders); // Render orders directly
+        } else {
+            console.log('No orders found or error in response');
+            // Show empty state
+            const ordersContent = document.querySelector('.orders-content');
+            if (ordersContent) {
+                ordersContent.innerHTML = `
+                    <div class="empty-cart">
+                <div class="empty-cart-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108" fill="none">
+                      <path d="M23.625 6.75C25.489 6.75 27 8.26104 27 10.125V30.375C27 34.7835 29.8175 38.5339 33.75 39.9239V10.125C33.75 8.26104 35.261 6.75 37.125 6.75C38.989 6.75 40.5 8.26104 40.5 10.125V39.9239C44.4325 38.5339 47.25 34.7835 47.25 30.375V10.125C47.25 8.26104 48.761 6.75 50.625 6.75C52.489 6.75 54 8.26104 54 10.125V30.375C54 38.539 48.2026 45.3489 40.5 46.9124V97.875C40.5 99.739 38.989 101.25 37.125 101.25C35.261 101.25 33.75 99.739 33.75 97.875V46.9124C26.0474 45.3489 20.25 38.539 20.25 30.375V10.125C20.25 8.26104 21.761 6.75 23.625 6.75ZM70.7302 16.7302C71.8039 15.6566 73.0143 14.8239 74.25 14.273V47.25H67.5V23.625C67.5 21.3477 68.6727 18.7878 70.7302 16.7302ZM74.25 54V97.875C74.25 99.739 75.761 101.25 77.625 101.25C79.489 101.25 81 99.739 81 97.875V10.125C81 8.26104 79.489 6.75 77.625 6.75C73.1523 6.75 68.9622 8.95235 65.9573 11.9573C62.9523 14.9622 60.75 19.1523 60.75 23.625V50.625C60.75 52.489 62.261 54 64.125 54H74.25Z" fill="#C41115"/>
+                    </svg>
+                </div>
+                        <h3>No Orders Yet</h3>
+                        <p>You haven't placed any orders yet. Start exploring our delicious menu!</p>
+                <div style="margin-top:16px;">
+                            <a href="/" class="btn btn-primary">
+                                Browse Menu
+                    </a>
+                </div>
+            </div>
+                `;
+            }
+        }
+    })
+    .catch(error => {
+        console.log('Error loading orders:', error);
+        // Show error state
+        const ordersContent = document.querySelector('.orders-content');
+        if (ordersContent) {
+            ordersContent.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 2rem; color: #e74c3c;">❌</div>
+                    <p>Error loading orders. Please try again.</p>
+                    <button onclick="loadOrdersManually()" class="btn btn-primary">Retry</button>
+                </div>
+            `;
+        }
+    });
+}
+
+function renderOrders(orders) {
+    console.log('Rendering orders:', orders);
+    
+    const ordersContent = document.querySelector('.orders-content');
+    if (!ordersContent) return;
+    
+    // Create orders cards HTML
+    let ordersHTML = `<div class="orders-cards-container">`;
+    
+    orders.forEach((order, index) => {
+        const orderDate = new Date(order.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+        const orderTime = new Date(order.created_at).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+        
+        // Get all items for display
+        const allItems = [];
+        order.bags.forEach(bag => {
+            bag.items.forEach(item => {
+                allItems.push({
+                    name: item.name,
+                    portions: item.portions
+                });
+            });
+        });
+        
+        ordersHTML += `
+            <div class="order-card" data-status="${order.status.toLowerCase().replace(/\s+/g, '-')}">
+                <!-- Order Header -->
+                <div class="order-header">
+                    <div class="order-id">#${order.id}</div>
+                    <div class="order-date">
+                        <span class="date-primary">${orderDate}</span>
+                        <span class="date-secondary">${orderTime}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Order Status:</span>
+                        <span class="detail-value">
+                            <span class="status-badge status-${order.status.toLowerCase().replace(/\s+/g, '-')}">${order.status}</span>
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Order Details -->
+                <div class="order-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Total Cost:</span>
+                        <span class="detail-value">₦${Math.round(order.total).toLocaleString()}</span>
+                    </div>
+                </div>
+                
+                <!-- Order Items Summary -->
+                <div class="order-items-summary">
+                    <div class="detail-label">What You Ordered:</div>
+                    <div class="items-list">
+        `;
+        
+        allItems.forEach(item => {
+            ordersHTML += `
+                <div class="item-name">${item.name} (${item.portions} ${item.portions === 1 ? 'portion' : 'portions'})</div>
+            `;
+        });
+        
+        ordersHTML += `
+                    </div>
+                </div>
+                
+            </div>
+        `;
+    });
+    
+    ordersHTML += `</div>`;
+    
+    ordersContent.innerHTML = ordersHTML;
+}
+
+</script>
+{% endblock %}

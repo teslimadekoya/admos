@@ -1,0 +1,758 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}{{ customer.first_name }} {{ customer.last_name }} - Order History{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+
+    <div class="page-header">
+        <h1 class="page-title">{{ customer.first_name }} {{ customer.last_name }} - Order History</h1>
+        <a href="{% url 'dashboard:users' %}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Back to Customers
+        </a>
+    </div>
+
+    <!-- Customer Info Section -->
+    <div class="customer-info-section">
+        <div class="customer-info">
+            <div class="customer-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="customer-details">
+                <h3>{{ customer.first_name }} {{ customer.last_name }}</h3>
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <span>{{ customer.phone_number }}</span>
+                    </div>
+                    {% if customer.email %}
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>{{ customer.email }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="customer-stats">
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <span class="stat-value">{{ total_orders }}</span>
+                        <span class="stat-label">Total Orders</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <span class="stat-value">₦{{ total_spent|floatformat:0 }}</span>
+                        <span class="stat-label">Total Spent</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <span class="stat-value">
+                            {% if last_order_date %}
+                                {{ last_order_date|date:"M d, Y" }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </span>
+                        <span class="stat-label">Last Order</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="orders-section">
+        <div class="section-header">
+            <h3>
+                <i class="fas fa-history"></i>
+                Order History
+            </h3>
+            <div class="order-count">
+                {{ orders|length }} order{{ orders|length|pluralize }}
+            </div>
+        </div>
+        <div class="table-container">
+            {% if orders %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <i class="fas fa-receipt"></i>
+                                Order ID
+                            </th>
+                            <th>
+                                <i class="fas fa-calendar"></i>
+                                Date
+                            </th>
+                            <th>
+                                <i class="fas fa-shopping-bag"></i>
+                                Items
+                            </th>
+                            <th>
+                                <i class="fas fa-naira-sign"></i>
+                                Total Amount
+                            </th>
+                            <th>
+                                <i class="fas fa-info-circle"></i>
+                                Status
+                            </th>
+                            <th>
+                                <i class="fas fa-cog"></i>
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr class="order-row clickable-row" data-order-url="{% url 'dashboard:order_details' order.id %}">
+                            <td class="order-id-cell">
+                                <div class="order-id">
+                                    <span class="order-number">#{{ order.id }}</span>
+                                </div>
+                            </td>
+                            <td class="order-date-cell">
+                                <div class="date-info">
+                                    <span class="date">{{ order.created_at|date:"M d, Y" }}</span>
+                                    <span class="time">{{ order.created_at|date:"g:i A" }}</span>
+                                </div>
+                            </td>
+                            <td class="order-items-cell">
+                                <div class="order-items">
+                                    {% for bag in order.bags.all %}
+                                        <div class="bag-group">
+                                            <div class="bag-label">{{ bag.name }}</div>
+                                            <div class="bag-items">
+                                                {% for item in bag.items.all %}
+                                                    <div class="order-item">
+                                                        <span class="item-name">
+                                                            {% if item.food_item %}
+                                                                {{ item.food_item.name }}
+                                                            {% elif item.item_name %}
+                                                                {{ item.item_name }}
+                                                            {% else %}
+                                                                Unknown Item
+                                                            {% endif %}
+                                                        </span>
+                                                        <span class="item-quantity">{{ item.quantity_display }}</span>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="order-total-cell">
+                                <div class="total-amount">
+                                    <span class="currency">₦</span>
+                                    <span class="amount">{{ order.payment.amount|floatformat:0 }}</span>
+                                </div>
+                            </td>
+                            <td class="order-status-cell">
+                                <span class="status-badge status-{{ order.status }}">
+                                    <i class="fas fa-circle"></i>
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="order-actions-cell">
+                                <a href="{% url 'dashboard:order_details' order.id %}" class="btn btn-primary" onclick="event.stopPropagation();">
+                                    <i class="fas fa-eye"></i> View Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <h3>No Orders Found</h3>
+                    <p>This customer hasn't placed any orders yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Page Header */
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+
+.page-title {
+    color: #1C1B1C !important;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* Customer Info Section - White Card */
+.customer-info-section {
+    margin-bottom: 2rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.customer-info {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    padding: 1.5rem;
+    border-bottom: none;
+}
+
+.customer-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #C41115 0%, #a00e12 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(196, 17, 21, 0.3);
+}
+
+.customer-details h3 {
+    margin: 0 0 1rem 0;
+    color: #1C1B1C;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.contact-item i {
+    width: 16px;
+    color: #6b7280;
+}
+
+.customer-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-left: auto;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    box-shadow: none;
+    min-width: 180px;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 1.25rem;
+}
+
+.stat-content {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+
+.stat-value {
+    color: #1C1B1C;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+}
+
+/* Section Header */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    margin-bottom: 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.section-header h3 {
+    margin: 0;
+    color: #1C1B1C;
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.order-count {
+    background: #f0f9ff;
+    color: #0369a1;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Table Styling - White Card */
+.table-container {
+    overflow-x: auto;
+    padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
+}
+
+.data-table th {
+    background: #f8fafc;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #1C1B1C;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.data-table th i {
+    color: #6b7280;
+    margin-right: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.data-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+    transition: all 0.2s ease;
+}
+
+.order-row {
+    transition: all 0.2s ease;
+}
+
+.order-row:hover {
+    background: #f9fafb;
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clickable-row:hover {
+    background: #fef8f8 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.order-row:last-child td {
+    border-bottom: none;
+}
+
+/* Order ID Cell */
+.order-id-cell {
+    width: 120px;
+}
+
+.order-id {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.order-number {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border: 1px solid #d1d5db;
+}
+
+/* Date Cell */
+.order-date-cell {
+    width: 140px;
+}
+
+.date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.date {
+    color: #1C1B1C;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.time {
+    color: #6b7280;
+    font-size: 0.75rem;
+    background: #f3f4f6;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+/* Items Cell */
+.order-items-cell {
+    min-width: 250px;
+}
+
+.order-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.bag-group {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.bag-label {
+    background: #f8fafc;
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.bag-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid #f3f4f6;
+}
+
+.item-name {
+    color: #1C1B1C;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.item-quantity {
+    color: #6b7280;
+    background: #f8fafc;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid #e5e7eb;
+}
+
+/* Total Amount Cell */
+.order-total-cell {
+    width: 120px;
+}
+
+.total-amount {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.currency {
+    color: #C41115;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.amount {
+    color: #1C1B1C;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+/* Status Cell */
+.order-status-cell {
+    width: 120px;
+}
+
+/* Actions Cell */
+.order-actions-cell {
+    width: 140px;
+}
+
+/* Status Badge */
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-badge i {
+    font-size: 0.5rem;
+}
+
+.status-pending, .status-Pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-on_the_way, .status-On.the.Way {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-completed, .status-delivered, .status-Delivered {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #C41115 0%, #a00e12 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #a00e12 0%, #8a0c0f 100%);
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(196, 17, 21, 0.4);
+}
+
+.btn-outline {
+    background: transparent;
+    color: #1C1B1C;
+    border: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    opacity: 0.8;
+}
+
+.btn-outline:hover {
+    background: #f9fafb;
+    color: #1C1B1C;
+    border-color: #d1d5db;
+    text-decoration: none;
+    opacity: 1;
+    transform: none;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #6b7280;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    color: #d1d5db;
+    margin-bottom: 1.5rem;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.75rem;
+    color: #1C1B1C;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+/* Orders Section - White Card */
+.orders-section {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .customer-stats {
+        flex-direction: column;
+        gap: 1rem;
+        margin-left: 0;
+    }
+    
+    .stat-card {
+        min-width: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .page-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .page-title {
+        font-size: 1.5rem;
+    }
+    
+    .customer-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+        padding: 1.5rem;
+    }
+    
+    .customer-stats {
+        width: 100%;
+    }
+    
+    .order-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .order-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .order-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 480px) {
+    .customer-avatar {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    
+    .customer-details h3 {
+        font-size: 1.25rem;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+    }
+    
+    .order-card {
+        padding: 1rem;
+    }
+    
+    .item-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+</style>
+
+<script>
+// Handle clickable rows
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('click', function(e) {
+        // Check if clicked element is a clickable row or inside one
+        const clickableRow = e.target.closest('.clickable-row');
+        if (clickableRow) {
+            // Don't navigate if clicking on a button or link
+            if (e.target.matches('button, a, .btn') || e.target.closest('button, a, .btn')) {
+                return;
+            }
+            
+            const orderUrl = clickableRow.getAttribute('data-order-url');
+            if (orderUrl) {
+                window.location.href = orderUrl;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

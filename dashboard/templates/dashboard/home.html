@@ -1,0 +1,1156 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Dashboard - Admos Place{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+    </div>
+
+    <!-- Dashboard Cards -->
+    <div class="dashboard-grid">
+        <a href="{% url 'dashboard:orders' %}" class="dashboard-card primary">
+            <div class="card-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="card-content">
+                <h3>Orders</h3>
+                <p>Manage customer orders and delivery</p>
+                <span class="card-badge notification-badge">{{ today_orders }}</span>
+            </div>
+        </a>
+
+        <a href="{% url 'dashboard:items' %}" class="dashboard-card">
+            <div class="card-icon">
+                <i class="fas fa-utensils"></i>
+            </div>
+            <div class="card-content">
+                <h3>Menu Items</h3>
+                <p>Add and manage food items</p>
+            </div>
+        </a>
+
+        <a href="{% url 'dashboard:payments' %}" class="dashboard-card">
+            <div class="card-icon">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <div class="card-content">
+                <h3>Payments</h3>
+                <p>View payment records</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Business Analytics Section -->
+    <div class="business-analytics-section">
+        
+        <div class="analytics-grid">
+            <!-- Revenue Analytics -->
+            <div class="analytics-card revenue-card">
+                <div class="card-header">
+                    <h3>Total Revenue</h3>
+                    <div class="card-filter">
+                        <select id="revenue-filter" onchange="updateRevenueAnalytics()">
+                            <option value="today" {% if revenue_filter == 'today' %}selected{% endif %}>Today</option>
+                            <option value="week" {% if revenue_filter == 'week' %}selected{% endif %}>This Week</option>
+                            <option value="month" {% if revenue_filter == 'month' %}selected{% endif %}>This Month</option>
+                            <option value="3months" {% if revenue_filter == '3months' %}selected{% endif %}>Last 3 Months</option>
+                            <option value="year" {% if revenue_filter == 'year' %}selected{% endif %}>This Year</option>
+                            <option value="lifetime" {% if revenue_filter == 'lifetime' %}selected{% endif %}>Lifetime</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="revenue-amount" id="revenue-display">₦{{ total_revenue|floatformat:0 }}</div>
+                </div>
+            </div>
+
+            <!-- Best Selling Product -->
+            <div class="analytics-card best-selling-card">
+                <div class="card-header">
+                    <h3>Best Selling Product</h3>
+                    <div class="card-filter">
+                        <select id="products-filter" onchange="updateProductsAnalytics()">
+                            <option value="today" {% if products_filter == 'today' %}selected{% endif %}>Today</option>
+                            <option value="week" {% if products_filter == 'week' %}selected{% endif %}>This Week</option>
+                            <option value="month" {% if products_filter == 'month' %}selected{% endif %}>This Month</option>
+                            <option value="3months" {% if products_filter == '3months' %}selected{% endif %}>Last 3 Months</option>
+                            <option value="year" {% if products_filter == 'year' %}selected{% endif %}>This Year</option>
+                            <option value="lifetime" {% if products_filter == 'lifetime' %}selected{% endif %}>Lifetime</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-content">
+                    {% if best_selling_products %}
+                        {% for product in best_selling_products %}
+                        <div class="top-product">
+                            <div class="product-name">{{ product.name }}</div>
+                            <div class="product-orders">{{ product.count }} order{{ product.count|pluralize }}</div>
+                        </div>
+                        {% if not forloop.last %}<div class="product-separator">Tied with:</div>{% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-data">
+                            No orders in this period
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+                
+            <!-- System Settings Panel -->
+            <div class="analytics-card settings-card">
+                <div class="card-header">
+                    <h3>System Settings</h3>
+                </div>
+                <div class="card-content">
+                    {% csrf_token %}
+                    <div class="settings-display">
+                        <!-- Service Charge -->
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <span class="setting-label">Service Charge:</span>
+                                <span class="setting-value">₦{{ service_charge }}</span>
+                            </div>
+                            <div class="setting-actions">
+                                <button onclick="editSetting('service_charge', {{ service_charge }})" class="btn-edit-individual">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- VAT Percentage -->
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <span class="setting-label">VAT Percentage:</span>
+                                <span class="setting-value">{{ vat_percentage }}%</span>
+                            </div>
+                            <div class="setting-actions">
+                                <button onclick="editSetting('vat_percentage', {{ vat_percentage }})" class="btn-edit-individual">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Plate Fee -->
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <span class="setting-label">Plate Fee:</span>
+                                <span class="setting-value">₦{{ plate_fee }}</span>
+                            </div>
+                            <div class="setting-actions">
+                                <button onclick="editSetting('plate_fee', {{ plate_fee }})" class="btn-edit-individual">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                
+            </div>
+        </div>
+        
+<style>
+/* Page Header Styles */
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-title {
+    color: #1C1B1C !important;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-title i {
+    color: #1C1B1C !important;
+    fill: #1C1B1C !important;
+    font-size: 1.5rem;
+}
+
+.page-title i svg {
+    fill: #1C1B1C !important;
+    stroke: #1C1B1C !important;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: #C41115;
+    text-decoration: none;
+    color: inherit;
+}
+
+.dashboard-card.primary {
+    border-color: #C41115;
+    background: linear-gradient(135deg, #fef8f8 0%, #ffffff 100%);
+}
+
+.dashboard-card .card-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #fef8f8 0%, #ffffff 100%);
+    border: 2px solid #1C1B1C;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.dashboard-card.primary .card-icon {
+    background: #C41115;
+    border-color: #C41115;
+}
+
+.dashboard-card .card-icon i {
+    color: #1C1B1C;
+    font-size: 1.25rem;
+}
+
+.dashboard-card.primary .card-icon i {
+    color: white;
+}
+
+.dashboard-card .card-content h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #000000;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.3;
+}
+
+.dashboard-card .card-content p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.business-analytics-section {
+    margin-top: 3rem;
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.card-filter select {
+    padding: 0.625rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    min-width: 120px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2rem;
+}
+
+.card-filter select:focus {
+    outline: none;
+    border-color: #C41115;
+    box-shadow: 0 0 0 3px rgba(196, 17, 21, 0.1);
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.analytics-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.analytics-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: #C41115;
+}
+
+.analytics-card.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.card-filter select {
+    transition: all 0.2s ease;
+}
+
+.card-filter select:focus {
+    outline: none;
+    border-color: #C41115;
+    box-shadow: 0 0 0 3px rgba(196, 17, 21, 0.1);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1C1B1C;
+    flex: 1;
+}
+
+.card-filter {
+    display: flex;
+    align-items: center;
+}
+
+
+.revenue-amount {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1C1B1C;
+    margin-bottom: 0.75rem;
+    line-height: 1;
+}
+
+/* Best Selling Product Styles */
+.best-selling-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.best-selling-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: #C41115;
+}
+
+.top-product {
+    padding: 1rem;
+    background: linear-gradient(135deg, #fef8f8 0%, #ffffff 100%);
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.top-product:hover {
+    border-color: #C41115;
+    transform: translateY(-1px);
+}
+
+.product-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1C1B1C;
+    margin-bottom: 0.25rem;
+}
+
+.product-orders {
+    font-size: 0.9rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.product-separator {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    font-weight: 500;
+    margin: 0.5rem 0;
+    font-style: italic;
+}
+
+.no-data {
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.9rem;
+    padding: 2rem 1rem;
+}
+
+.revenue-period {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+
+.no-data {
+    color: #6b7280;
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+}
+
+/* System Settings Styles */
+.settings-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.settings-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: #C41115;
+}
+
+.settings-actions {
+    display: flex;
+    align-items: center;
+}
+
+.btn-edit-settings {
+    background: #C41115;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-edit-settings:hover {
+    background: #a00e12;
+    transform: translateY(-1px);
+}
+
+.settings-display {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #fef8f8 0%, #ffffff 100%);
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    margin-bottom: 0.75rem;
+}
+
+.setting-row:hover {
+    border-color: #C41115;
+    transform: translateY(-1px);
+}
+
+.setting-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.setting-actions {
+    display: flex;
+    align-items: center;
+}
+
+.btn-edit-individual {
+    background: #C41115;
+    color: white;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.btn-edit-individual:hover {
+    background: #a00e12;
+    transform: translateY(-1px);
+}
+
+.setting-label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.9rem;
+}
+
+.setting-value {
+    font-weight: 600;
+    color: #1C1B1C;
+    font-size: 0.9rem;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.setting-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.setting-item label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.setting-input-group {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.setting-input-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.setting-input-group input:focus {
+    outline: none;
+    border-color: #C41115;
+    box-shadow: 0 0 0 3px rgba(196, 17, 21, 0.1);
+}
+
+.currency, .percentage {
+    position: absolute;
+    color: #6b7280;
+    font-weight: 500;
+    font-size: 0.875rem;
+    pointer-events: none;
+}
+
+.currency {
+    left: 0.75rem;
+}
+
+.percentage {
+    right: 0.75rem;
+}
+
+.settings-buttons {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.btn-save {
+    background: #059669;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-save:hover {
+    background: #047857;
+    transform: translateY(-1px);
+}
+
+.btn-cancel {
+    background: #6b7280;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
+}
+
+.card-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #C41115;
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(196, 17, 21, 0.3);
+}
+
+/* Chart styles removed - no charts displayed */
+
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .analytics-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .settings-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+    
+    .page-title {
+    font-size: 1.5rem;
+    }
+    
+    .dashboard-card {
+        padding: 1rem;
+    }
+    
+    .dashboard-card .card-icon {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .dashboard-card .card-icon i {
+        font-size: 1rem;
+}
+
+.analytics-card {
+        padding: 1rem;
+    }
+    
+    .revenue-amount {
+        font-size: 2rem;
+    }
+}
+
+/* Enhanced Analytics Section removed */
+</style>
+
+<!-- Analytics data removed -->
+
+<script>
+// Enhanced analytics removed
+
+// Check if Chart.js is loaded
+if (typeof Chart === 'undefined') {
+    console.error('Chart.js is not loaded!');
+} else {
+    console.log('Chart.js is loaded successfully');
+}
+
+// Revenue Chart - Removed
+function createRevenueChart() {
+    console.log('Revenue chart removed - no chart will be displayed');
+}
+
+// Products Chart - moved to createProductsChart function
+
+function createProductsChart() {
+    // Chart removed - function kept for compatibility but does nothing
+    console.log('Products chart creation disabled - chart removed');
+}
+
+function updateRevenueAnalytics() {
+    const revenueFilter = document.getElementById('revenue-filter').value;
+    updateRevenueDataOnly(revenueFilter);
+}
+
+function updateProductsAnalytics() {
+    const productsFilter = document.getElementById('products-filter').value;
+    updateProductsDataOnly(productsFilter);
+}
+
+
+// Separate function to update only revenue data
+function updateRevenueDataOnly(revenueFilter) {
+    // Show loading indicator for revenue
+    const revenueElement = document.querySelector('.revenue-amount');
+    if (revenueElement) {
+        revenueElement.textContent = 'Loading...';
+    }
+    
+    // Create URL with only revenue filter
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('revenue_filter', revenueFilter);
+    
+    // Make AJAX request
+    fetch(currentUrl.toString(), {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (response.ok && response.headers.get('Content-Type')?.includes('application/json')) {
+            return response.json();
+} else {
+            return response.text();
+        }
+    })
+    .then(data => {
+        if (typeof data === 'object' && data.success) {
+            // Handle JSON response - update only revenue data
+            updateRevenueFromJson(data.data, revenueFilter);
+        } else {
+            // Handle HTML response - update only revenue data
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data, 'text/html');
+            updateRevenueCard(doc, revenueFilter);
+        }
+        
+        // Update URL without page reload
+        window.history.pushState({}, '', currentUrl.toString());
+    })
+    .catch(error => {
+        console.error('Failed to update revenue data:', error);
+        if (revenueElement) {
+            revenueElement.textContent = 'Error loading data';
+        }
+    });
+}
+
+
+// Function to update only revenue data from JSON
+function updateRevenueFromJson(data, revenueFilter) {
+    // Update revenue amount
+    const revenueElement = document.querySelector('.revenue-amount');
+    if (revenueElement) {
+        if (data.total_revenue_formatted) {
+            revenueElement.textContent = data.total_revenue_formatted;
+        } else {
+            revenueElement.textContent = `₦${data.total_revenue.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+        }
+        
+        // Ensure commas are always formatted
+        let revenueText = revenueElement.textContent;
+        revenueText = revenueText.replace(/\.00/g, '');
+        const amount = revenueText.replace('₦', '').replace(/,/g, '');
+        const formattedAmount = parseFloat(amount).toLocaleString(undefined, {maximumFractionDigits: 0});
+        revenueElement.textContent = `₦${formattedAmount}`;
+    }
+    
+    
+    // Revenue chart removed - no chart updates needed
+}
+
+// Separate function to update only products data
+function updateProductsDataOnly(productsFilter) {
+    // Show loading indicator for products
+    const productsCard = document.querySelector('.best-selling-card .card-content');
+    if (productsCard) {
+        productsCard.innerHTML = '<div class="no-data">Loading...</div>';
+    }
+    
+    // Create URL with filter parameters
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('products_filter', productsFilter);
+    
+    // Make AJAX request
+    fetch(currentUrl.toString(), {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+    .then(response => {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json();
+        } else {
+            return response.text();
+        }
+    })
+    .then(data => {
+        if (typeof data === 'object' && data.success) {
+            // JSON response
+            updateProductsFromJson(data.data, productsFilter);
+        } else {
+            // HTML response
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data, 'text/html');
+            updateProductsCard(doc, productsFilter);
+        }
+        
+        // Update URL without page reload
+        window.history.pushState({}, '', currentUrl.toString());
+    })
+    .catch(error => {
+        console.error('Failed to update products data:', error);
+        if (productsCard) {
+            productsCard.innerHTML = '<div class="no-data">Error loading data</div>';
+        }
+    });
+}
+
+// Function to update only products data from JSON
+function updateProductsFromJson(data, productsFilter) {
+    // Update products display
+    const productsCard = document.querySelector('.best-selling-card .card-content');
+    if (productsCard && data.best_selling_products) {
+        if (data.best_selling_products.length > 0) {
+            let productsHtml = '';
+            data.best_selling_products.forEach((product, index) => {
+                productsHtml += `
+                    <div class="top-product">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-orders">${product.count} order${product.count !== 1 ? 's' : ''}</div>
+                    </div>
+                `;
+                if (index < data.best_selling_products.length - 1) {
+                    productsHtml += '<div class="product-separator">Tied with:</div>';
+                }
+            });
+            productsCard.innerHTML = productsHtml;
+        } else {
+            productsCard.innerHTML = '<div class="no-data">No orders in this period</div>';
+        }
+    }
+}
+
+function updateProductsCard(doc, productsFilter) {
+    // Update products display from HTML response
+    const productsCard = doc.querySelector('.best-selling-card .card-content');
+    if (productsCard) {
+        const currentProductsCard = document.querySelector('.best-selling-card .card-content');
+        if (currentProductsCard) {
+            currentProductsCard.innerHTML = productsCard.innerHTML;
+        }
+    }
+}
+
+
+// Enhanced Analytics Charts removed
+
+
+function updateAnalyticsData(revenueFilter, productsFilter) {
+    // Show loading indicator
+    showLoadingIndicator();
+    
+    // Create URL with filter parameters
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('revenue_filter', revenueFilter);
+    currentUrl.searchParams.set('products_filter', productsFilter);
+    
+    // Make AJAX request
+    fetch(currentUrl.toString(), {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (response.headers.get('content-type')?.includes('application/json')) {
+            return response.json();
+        } else {
+            return response.text();
+        }
+    })
+    .then(data => {
+        if (typeof data === 'object' && data.success) {
+            // Handle JSON response
+            updateAnalyticsFromJson(data.data, revenueFilter);
+        } else {
+            // Handle HTML response (fallback)
+        const parser = new DOMParser();
+            const doc = parser.parseFromString(data, 'text/html');
+        
+        // Update revenue card data
+        updateRevenueCard(doc, revenueFilter);
+        
+        // Update charts
+        updateCharts(doc);
+        }
+        
+        // Update URL without page reload
+        window.history.pushState({}, '', currentUrl.toString());
+        
+        // Hide loading indicator
+        hideLoadingIndicator();
+    })
+    .catch(error => {
+        console.error('Error updating analytics:', error);
+        hideLoadingIndicator();
+        // Show error message instead of page reload
+        console.error('Failed to update analytics data');
+    });
+}
+
+function updateAnalyticsFromJson(data, revenueFilter) {
+    console.log('Updating analytics from JSON data:', data);
+    console.log('Revenue filter:', revenueFilter);
+    
+    // Update revenue card
+    const revenueElement = document.querySelector('.revenue-amount');
+    if (revenueElement) {
+        if (data.total_revenue_formatted) {
+            revenueElement.textContent = data.total_revenue_formatted;
+        } else {
+            revenueElement.textContent = `₦${data.total_revenue.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+        }
+        
+        // Ensure commas are always formatted
+        let revenueText = revenueElement.textContent;
+        revenueText = revenueText.replace(/\.00/g, '');
+        const amount = revenueText.replace('₦', '').replace(/,/g, '');
+        const formattedAmount = parseFloat(amount).toLocaleString(undefined, {maximumFractionDigits: 0});
+        revenueElement.textContent = `₦${formattedAmount}`;
+    }
+    
+    
+    
+    // Charts removed - no chart updates needed
+}
+
+
+
+
+
+function updateRevenueCard(doc, revenueFilter) {
+    // Update revenue amount
+    const revenueAmount = doc.querySelector('.revenue-amount');
+    if (revenueAmount) {
+        // Remove .00 from revenue display and format with commas
+        let revenueText = revenueAmount.textContent;
+        revenueText = revenueText.replace(/\.00/g, '');
+        const currentRevenueElement = document.querySelector('.revenue-amount');
+        if (currentRevenueElement) {
+            const amount = revenueText.replace('₦', '').replace(/,/g, '');
+            const formattedAmount = parseFloat(amount).toLocaleString(undefined, {maximumFractionDigits: 0});
+            currentRevenueElement.textContent = `₦${formattedAmount}`;
+        }
+    }
+    
+    
+    // Update revenue period text
+    const revenuePeriod = doc.querySelector('.revenue-period');
+    if (revenuePeriod) {
+        const currentRevenuePeriod = document.querySelector('.revenue-period');
+        if (currentRevenuePeriod) {
+            currentRevenuePeriod.textContent = revenuePeriod.textContent;
+        }
+    }
+}
+
+
+function updateCharts(doc) {
+    // Charts removed - no chart updates needed
+    console.log('Charts removed - no updates needed');
+}
+
+function showLoadingIndicator() {
+    // Add loading class to analytics cards
+    document.querySelectorAll('.analytics-card').forEach(card => {
+        card.classList.add('loading');
+    });
+}
+
+function hideLoadingIndicator() {
+    // Remove loading class from analytics cards
+    document.querySelectorAll('.analytics-card').forEach(card => {
+        card.classList.remove('loading');
+    });
+}
+
+// Initialize charts when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing charts...');
+    console.log('Chart.js available:', typeof Chart !== 'undefined');
+    
+    // Remove .00 from revenue display on initial load
+    const revenueElement = document.querySelector('.revenue-amount');
+    if (revenueElement) {
+        let revenueText = revenueElement.textContent;
+        revenueText = revenueText.replace(/\.00/g, '');
+        revenueElement.textContent = revenueText;
+    }
+    
+    // Wait for Chart.js to be available
+    function initializeCharts() {
+        if (typeof Chart === 'undefined') {
+            console.log('Chart.js not ready, retrying in 100ms...');
+            setTimeout(initializeCharts, 100);
+            return;
+        }
+        
+        // Initialize existing charts
+        try {
+            console.log('Revenue chart removed - skipping creation');
+            console.log('Products chart removed - skipping creation');
+            console.log('Existing charts initialized');
+            
+            // Charts removed - no initialization needed
+        } catch (error) {
+            console.error('Error initializing existing charts:', error);
+        }
+        
+        // Enhanced analytics charts removed
+        console.log('Enhanced analytics charts removed');
+    }
+    
+    initializeCharts();
+    });
+    
+    // Format initial revenue display with commas
+    document.addEventListener('DOMContentLoaded', function() {
+        const revenueElement = document.getElementById('revenue-display');
+        if (revenueElement) {
+            const currentText = revenueElement.textContent;
+            const amount = currentText.replace('₦', '').replace(/,/g, '');
+            const formattedAmount = parseFloat(amount).toLocaleString(undefined, {maximumFractionDigits: 0});
+            revenueElement.textContent = `₦${formattedAmount}`;
+        }
+    });
+    
+    // Individual Setting Edit Functions
+    function editSetting(settingType, currentValue) {
+        const newValue = prompt(`Enter new ${settingType.replace('_', ' ')}:`, currentValue);
+        
+        if (newValue !== null && newValue !== '' && newValue !== currentValue.toString()) {
+            const numericValue = parseFloat(newValue);
+            
+            // Validate the input
+            if (isNaN(numericValue)) {
+                alert('Please enter a valid number.');
+                return;
+            }
+            
+            if (numericValue < 0) {
+                alert('Value must be 0 or greater.');
+                return;
+            }
+            
+            if (settingType === 'vat_percentage' && numericValue > 50) {
+                alert('VAT percentage must be between 0 and 50%.');
+                return;
+            }
+            
+            if (settingType === 'plate_fee' && numericValue > 1000) {
+                alert('Plate fee must be between 0 and 1,000.');
+                return;
+            }
+            
+            // Create form data
+            const formData = new FormData();
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (!csrfToken) {
+                alert('CSRF token not found. Please refresh the page and try again.');
+                return;
+            }
+            formData.append('csrfmiddlewaretoken', csrfToken.value);
+            formData.append(settingType, numericValue);
+            
+            // Show loading state
+            const button = event.target.closest('.btn-edit-individual');
+            const originalHTML = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            button.disabled = true;
+            
+            // Submit the update
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text();
+            })
+            .then(html => {
+                // Check if the response contains error messages
+                if (html.includes('error') || html.includes('Error')) {
+                    console.error('Server returned error:', html);
+                    throw new Error('Server returned an error');
+                }
+                // Reload page to show updated values
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Error saving setting:', error);
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+                alert(`Error saving setting: ${error.message}. Please try again.`);
+            });
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends 'customer_site/base.html' %}
+{% load static %}
+
+{% block title %}{{ restaurant_name }} - {{ restaurant_tagline }}{% endblock %}
+
+{% block content %}
+<!-- Menu Page Style Homepage -->
+<div class="menu-page">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <h1 class="page-title">Menu</h1>
+        </div>
+    </div>
+
+    <!-- Category Filters -->
+    <div class="category-section">
+        <div class="container">
+            <div class="category-filters">
+                <button class="filter-btn active" data-category="all">All</button>
+                <!-- Debug: {{ categories|length }} categories found -->
+                {% for category in categories %}
+                    <button class="filter-btn" data-category="{{ category.name|lower }}">{{ category.name }}</button>
+                {% empty %}
+                    <p>No categories found - Debug: categories variable is empty</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Items Grid -->
+    <div class="menu-content">
+        <div class="container">
+            {% if featured_items %}
+                <div class="menu-grid">
+                    {% for item in featured_items %}
+                        <div class="menu-item-card" data-category="{{ item.category.name|lower }}" data-item-id="{{ item.id }}" onclick="openFoodModal({
+                            id: {{ item.id }},
+                            name: '{{ item.name|escapejs }}',
+                            price: {{ item.price }},
+                            image: {% if item.image %}'{{ item.image }}'{% else %}null{% endif %},
+                            category: '{{ item.category.name|escapejs }}'
+                        })">
+                            <div class="menu-item-image">
+                                {% if item.image %}
+                                    <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+                                {% else %}
+                                    <div class="menu-item-placeholder">
+                                        <!-- Black placeholder like in Figma -->
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="menu-item-info">
+                                <h3 class="menu-item-name">{{ item.name }}</h3>
+                                <div class="menu-item-price">₦{{ item.price|floatformat:0 }}</div>
+                            </div>
+                            
+                            <button class="add-to-cart-btn" data-item-id="{{ item.id }}" onclick="event.stopPropagation();">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-menu">
+                    <i class="fas fa-utensils"></i>
+                    <h3>No Menu Items Available</h3>
+                    <p>Check back soon for our delicious menu!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Homepage Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .menu-page .container {
+        padding: 0 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .menu-page .container {
+        padding: 0 12px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Apply filter immediately on page load
+    const savedCategory = localStorage.getItem('selectedCategory') || 'all';
+    applyCategoryFilter(savedCategory);
+    
+    // Category filtering
+    $('.filter-btn').click(function() {
+        const category = $(this).data('category');
+        
+        // Save selected category to localStorage
+        localStorage.setItem('selectedCategory', category);
+        
+        // Apply the filter
+        applyCategoryFilter(category);
+    });
+    
+    // Function to apply category filter
+    function applyCategoryFilter(category) {
+        // Update active button
+        $('.filter-btn').removeClass('active');
+        $(`.filter-btn[data-category="${category}"]`).addClass('active');
+        
+        // Filter items using CSS classes
+        if (category === 'all') {
+            $('.menu-item-card').removeClass('hidden');
+        } else {
+            $('.menu-item-card').addClass('hidden');
+            $(`.menu-item-card[data-category="${category}"]`).removeClass('hidden');
+        }
+    }
+    
+    // Add to cart functionality
+    $('.add-to-cart-btn').click(function(e) {
+        e.preventDefault();
+        const itemId = $(this).data('item-id');
+        const $btn = $(this);
+        
+        // Show loading state
+        $btn.html('<i class="fas fa-spinner fa-spin"></i>');
+        $btn.prop('disabled', true);
+        
+        // Make AJAX request
+        $.ajax({
+            url: '{% url "customer_site:add_to_cart" %}',
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() || '{{ csrf_token }}'
+            },
+            contentType: 'application/json',
+            data: JSON.stringify({
+                item_id: itemId,
+                quantity: 1
+            }),
+            success: function(response) {
+                if (response.success) {
+                    // Update cart count
+                    $('#cart-count').text(response.cart_count);
+                    $('#mobile-cart-count').text(response.cart_count);
+                    
+                    // Show success message
+                    showNotification(response.message, 'success');
+                    
+                    // Reset button
+                    $btn.html('<i class="fas fa-check"></i>');
+                    setTimeout(() => {
+                        $btn.html('<i class="fas fa-plus"></i>');
+                        $btn.prop('disabled', false);
+                    }, 2000);
+                } else {
+                    showNotification(response.message, 'error');
+                    $btn.html('<i class="fas fa-plus"></i>');
+                    $btn.prop('disabled', false);
+                }
+            },
+            error: function() {
+                showNotification('Something went wrong. Please try again.', 'error');
+                $btn.html('<i class="fas fa-plus"></i>');
+                $btn.prop('disabled', false);
+            }
+        });
+    });
+    
+    // Search functionality
+    $('.search-input').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        
+        $('.menu-item-card').each(function() {
+            const itemName = $(this).find('.menu-item-name').text().toLowerCase();
+            if (itemName.includes(searchTerm)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+    
+    // Convert food item names to sentence case
+    $('.menu-item-name').each(function() {
+        const originalText = $(this).text();
+        const sentenceCase = originalText.toLowerCase().replace(/\b\w/g, function(l) {
+            return l.toUpperCase();
+        });
+        $(this).text(sentenceCase);
+    });
+});
+
+function showNotification(message, type) {
+    const notification = $(`
+        <div class="notification notification-${type}">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+            <span>${message}</span>
+        </div>
+    `);
+    
+    $('body').append(notification);
+    
+    setTimeout(() => {
+        notification.fadeOut(() => notification.remove());
+    }, 3000);
+}
+</script>
+{% endblock %}

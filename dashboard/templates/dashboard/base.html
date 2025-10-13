@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admos Place Dashboard{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'dashboard/css/style.css' %}?v=17">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="header-top">
+                <h3>Admos Place</h3>
+                <button class="close-sidebar-btn" id="close-sidebar-btn">&times;</button>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">User: <span class="user-role">{{ user.role|title }}</span></div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    {% if user.role in 'admin,accountant' %}
+                    <li class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+                        <a href="{% url 'dashboard:home' %}">
+                            <i class="fas fa-home"></i> Home
+                        </a>
+                    </li>
+                    {% endif %}
+        <li class="{% if request.resolver_match.url_name == 'orders' or request.resolver_match.url_name == 'delivered_orders' %}active{% endif %}">
+            <a href="{% url 'dashboard:orders' %}">
+                <i class="fas fa-shopping-cart"></i> Orders
+                <span class="sidebar-badge">{{ active_orders_count }}</span>
+            </a>
+        </li>
+                    {% if user.role in 'admin,accountant' %}
+                    <li class="{% if request.resolver_match.url_name == 'payments' %}active{% endif %}">
+                        <a href="{% url 'dashboard:payments' %}">
+                            <i class="fas fa-credit-card"></i> Payments
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="{% if request.resolver_match.url_name == 'inventory' %}active{% endif %}">
+                        <a href="{% url 'dashboard:inventory' %}">
+                            <i class="fas fa-boxes"></i> Inventory
+                        </a>
+                    </li>
+                    <li class="{% if request.resolver_match.url_name == 'items' %}active{% endif %}">
+                        <a href="{% url 'dashboard:items' %}">
+                            <i class="fas fa-utensils"></i> Items
+                        </a>
+                    </li>
+                    <li class="{% if request.resolver_match.url_name == 'categories' %}active{% endif %}">
+                        <a href="{% url 'dashboard:categories' %}">
+                            <i class="fas fa-tags"></i> Categories
+                        </a>
+                    </li>
+        <li class="{% if request.resolver_match.url_name == 'users' %}active{% endif %}">
+            <a href="{% url 'dashboard:users' %}">
+                <i class="fas fa-users"></i> Customers
+            </a>
+        </li>
+                    {% if user.role == 'admin' %}
+                    <li class="{% if request.resolver_match.url_name == 'staff' %}active{% endif %}">
+                        <a href="{% url 'dashboard:staff' %}">
+                            <i class="fas fa-user-tie"></i> Staff
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="logout-item">
+                        <a href="#" onclick="openDashboardLogout()" class="logout-link">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="content-body">
+                {% if messages %}
+                    <div class="messages">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <!-- Undo Notification -->
+                <div id="undo-notification" class="undo-notification" style="display: none;">
+                    <div class="undo-content">
+                        <span class="undo-message"></span>
+                        <div class="undo-actions">
+                            <button id="undo-btn" class="undo-btn">Undo</button>
+                            <button id="dismiss-undo" class="dismiss-btn">&times;</button>
+                        </div>
+                    </div>
+                    <div class="undo-timer">
+                        <div class="undo-progress"></div>
+                    </div>
+                </div>
+                
+                <!-- Hidden CSRF token for undo functionality -->
+                {% csrf_token %}
+                
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Dashboard Logout Confirmation Modal -->
+    <div class="modal" id="dashboardLogoutModal">
+        <div class="logout-modal-content">
+            <button class="logout-modal-close" onclick="closeDashboardLogout()" aria-label="Close">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="#212121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <h3 class="logout-title">Confirm Logout</h3>
+            <p class="logout-subtitle">Are you sure you want to log out?</p>
+            <div class="logout-actions">
+                <form id="dashboardLogoutForm" method="post" action="{% url 'dashboard:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-confirm-btn">Yes</button>
+                </form>
+                <button class="logout-cancel-btn" onclick="closeDashboardLogout()">No</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .logout-modal-content { display:flex;width:560px;padding:44px;flex-direction:column;align-items:flex-start;gap:0;border-radius:var(--Border-Radius-24,24px);background:#FFF;color:var(--Text-Primary,#1C1B1C);text-align:center;margin:40px auto;position:relative;max-width:90vw; }
+        .logout-title { font-family:"Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;font-size:28px;font-style:normal;font-weight:600;line-height:1;letter-spacing:-0.14px;color:#1C1B1C;text-align:center;margin:0 0 4px 0;align-self:stretch; }
+        .logout-subtitle { font-family:"Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;font-size:16px;font-style:normal;font-weight:400;line-height:150%;color:var(--Text-Secondary,#474547);text-align:center;margin:0 0 24px 0;align-self:stretch; }
+        .logout-actions { display:flex;flex-direction:column;gap:12px;align-self:stretch;width:100%; }
+        .logout-confirm-btn { display:flex;height:48px;justify-content:center;align-items:center;gap:10px;align-self:stretch;border-radius:var(--Border-Radius-12,12px);background:var(--Admos-700,#C41115);color:#FFF;text-align:center;font-family:"Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;font-size:16px;font-style:normal;font-weight:600;line-height:150%;border:none;cursor:pointer; }
+        .logout-cancel-btn { display:flex;height:48px;justify-content:center;align-items:center;gap:10px;align-self:stretch;border-radius:var(--Border-Radius-12,12px);border:1px solid var(--Light-Stroke-2,#DCDBDC);background:#FFF;color:#1C1B1C;font-family:"Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;font-size:16px;font-style:normal;font-weight:600;line-height:150%;cursor:pointer; }
+        .logout-modal-close { position:absolute;top:16px;right:16px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:0;background:transparent;cursor:pointer; }
+        /* Center dashboard modal */
+        #dashboardLogoutModal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        #dashboardLogoutModal.active { display: flex; }
+
+        @media (max-width: 768px) {
+            .logout-modal-content { width: 90%; max-width: 400px; padding: 32px 24px; }
+            .logout-title { font-size: 20px; letter-spacing: -0.1px; }
+            .logout-subtitle { font-size: 16px; }
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'dashboard/js/main.js' %}"></script>
+    
+    <!-- Debug script to test undo functionality -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('=== UNDO DEBUG ===');
+        
+        // Check if undo elements exist
+        const undoNotification = document.getElementById('undo-notification');
+        const undoMessage = document.querySelector('.undo-message');
+        const undoBtn = document.getElementById('undo-btn');
+        
+        console.log('undo-notification element:', undoNotification);
+        console.log('undo-message element:', undoMessage);
+        console.log('undo-btn element:', undoBtn);
+        
+        // Test function
+        window.testUndo = function() {
+            console.log('Testing undo notification...');
+            if (undoNotification && undoMessage) {
+                undoMessage.textContent = 'Test - Item deleted';
+                undoNotification.style.display = 'block';
+                undoNotification.style.visibility = 'visible';
+                undoNotification.style.opacity = '1';
+                undoNotification.style.zIndex = '9999';
+                undoNotification.style.backgroundColor = 'red';
+                undoNotification.style.border = '5px solid yellow';
+                undoNotification.style.fontSize = '20px';
+                
+                console.log('Undo notification display:', undoNotification.style.display);
+                console.log('Undo notification visibility:', undoNotification.style.visibility);
+                console.log('Undo notification computed style:', window.getComputedStyle(undoNotification).display);
+                console.log('Undo notification should be visible now');
+                
+                setTimeout(() => {
+                    undoNotification.style.display = 'none';
+                }, 5000);
+            } else {
+                console.error('Undo elements not found!');
+            }
+        };
+        
+        console.log('testUndo function available:', typeof window.testUndo);
+        console.log('=== END DEBUG ===');
+    });
+    
+    // Simple undo confirmation function
+    function confirmUndo(link) {
+        if (confirm('Are you sure you want to undo this deletion?')) {
+            // Create a form to submit the undo request
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = link.href;
+            
+            // Add CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrfToken.value;
+                form.appendChild(csrfInput);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+        return false; // Prevent default link behavior
+    }
+    function openDashboardLogout(){ document.getElementById('dashboardLogoutModal').classList.add('active'); }
+    function closeDashboardLogout(){ document.getElementById('dashboardLogoutModal').classList.remove('active'); }
+    </script>
+    <script src="{% static 'dashboard/js/main.js' %}"></script>
+</body>
+</html>

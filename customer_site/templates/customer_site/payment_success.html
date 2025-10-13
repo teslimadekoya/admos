@@ -1,0 +1,444 @@
+{% extends 'customer_site/base.html' %}
+{% load static %}
+
+{% block title %}
+    {% if success %}Payment Successful{% else %}Payment Failed{% endif %} - Admos Food Ordering
+{% endblock %}
+
+{% block content %}
+<div class="payment-success-page">
+    <div class="container">
+        
+        <div class="payment-content">
+            {% if success %}
+                <!-- Success State -->
+                <div class="payment-status success">
+                    <div class="status-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="10" fill="#10B981" stroke="#10B981" stroke-width="2"/>
+                            <path d="M9 12l2 2 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h2 class="status-title">Payment Successful!</h2>
+                    <p class="status-message">{{ message }}</p>
+                </div>
+            
+            {% if order %}
+                <div class="order-details">
+                    <h3>Order Details</h3>
+                    <div class="order-info">
+                        <div class="info-row">
+                            <span class="label">Order ID:</span>
+                            <span class="value">#{{ order.id }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Total Amount:</span>
+                            <span class="value">₦{{ actual_payment_amount|floatformat:0 }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Status:</span>
+                            <span class="value status-pending">Pending</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Payment Method:</span>
+                            <span class="value">{{ payment.payment_type|default:"Card"|title }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Delivery Address:</span>
+                            <span class="value">{{ order.delivery_address }}</span>
+                        </div>
+                        <div class="info-row items-ordered">
+                            <span class="label">Items Ordered:</span>
+                            <div class="value">
+                                {% for bag in order.bags.all %}
+                                    {% for item in bag.items.all %}
+                                        <div class="item-line">{{ item.food_item.name }} (x{{ item.portions }})</div>
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+                <div class="action-buttons">
+                    <a href="{% url 'customer_site:order_tracking' order.id %}" class="btn btn-secondary">
+                        Track Your Order
+                    </a>
+                    <a href="{% url 'customer_site:homepage' %}" class="btn btn-primary">
+                        Back to Menu
+                    </a>
+                </div>
+                </div>
+            
+            {% else %}
+                <!-- Error State -->
+                <div class="payment-status error">
+                    <div class="status-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="10" fill="#EF4444" stroke="#EF4444" stroke-width="2"/>
+                            <path d="M15 9l-6 6M9 9l6 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h2 class="status-title">Payment Failed</h2>
+                    <p class="status-message">{{ message }}</p>
+                </div>
+            
+            {% if order %}
+                <div class="order-details">
+                    <h3>Order Details</h3>
+                    <div class="order-info">
+                        <div class="info-row">
+                            <span class="label">Order ID:</span>
+                            <span class="value">#{{ order.id }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Status:</span>
+                            <span class="value status-failed">Payment Failed</span>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="action-buttons">
+                <a href="{% url 'customer_site:checkout' %}?clear_address=true" class="btn btn-primary">
+                    Try Again
+                </a>
+                <a href="{% url 'customer_site:cart' %}" class="btn btn-secondary">
+                    Back to Cart
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Payment Success Page - Consistent with site design */
+.payment-success-page {
+    background: #ffffff;
+    min-height: 100vh;
+    padding: 60px 0;
+}
+
+.payment-success-page .container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 64px;
+}
+
+.payment-success-page .page-header {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.payment-success-page .page-title {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: #1C1B1C;
+    margin: 0;
+}
+
+.payment-content {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.payment-status {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.status-icon {
+    margin-bottom: 24px;
+}
+
+.status-title {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1C1B1C;
+    margin: 0 0 16px 0;
+}
+
+.status-message {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    color: #6B7280;
+    margin: 0 0 32px 0;
+    line-height: 1.5;
+}
+
+.order-details {
+    background: #F9FAFB;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 32px 0;
+    text-align: left;
+}
+
+.order-details h3 {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1C1B1C;
+    margin: 0 0 20px 0;
+    text-align: center;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-row.items-ordered {
+            align-items: flex-start;
+        }
+
+        .info-row.items-ordered .value {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .item-line {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #1C1B1C;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+.label {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 500;
+    color: #6B7280;
+    font-size: 14px;
+}
+
+.value {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1C1B1C;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.status-pending {
+    color: #F59E0B;
+    background: #FEF3C7;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-failed {
+    color: #DC2626;
+    background: #FEE2E2;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.order-items {
+    background: #F9FAFB;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.order-items h4 {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1C1B1C;
+    margin: 0 0 16px 0;
+    text-align: center;
+}
+
+.bag-section {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: white;
+    border-radius: 8px;
+    border-left: 3px solid #3B82F6;
+}
+
+.bag-section h5 {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #3B82F6;
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.item-row:last-child {
+    border-bottom: none;
+}
+
+.item-name {
+    flex: 1;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 500;
+    color: #1C1B1C;
+    font-size: 14px;
+}
+
+.item-quantity {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #6B7280;
+    margin: 0 12px;
+    font-size: 14px;
+}
+
+.item-price {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 600;
+    color: #059669;
+    font-size: 14px;
+}
+
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 600;
+            font-size: 16px;
+            line-height: 150%;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            min-width: 140px;
+            height: 48px;
+        }
+
+        .btn-primary {
+            background: #C41115;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #A00E12;
+        }
+
+        .btn-secondary {
+            background: #FFF;
+            color: #1C1B1C;
+            border: 1px solid #DCDBDC;
+        }
+
+        .btn-secondary:hover {
+            background: #F9FAFB;
+        }
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .payment-success-page .container {
+        padding: 0 32px;
+    }
+}
+
+@media (max-width: 768px) {
+    .payment-success-page {
+        padding: 32px 0;
+    }
+    
+    .payment-success-page .container {
+        padding: 0 16px;
+    }
+    
+    .payment-success-page .page-title {
+        font-size: 28px;
+    }
+    
+    .status-title {
+        font-size: 20px;
+    }
+    
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+    
+    .info-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .item-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+</style>
+
+<script>
+// Clear cart on frontend when payment is successful
+{% if success %}
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear cart and delivery address from localStorage if it exists
+    if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('cart');
+        localStorage.removeItem('bags');
+        localStorage.removeItem('current_bag');
+        localStorage.removeItem('delivery_address');
+        localStorage.removeItem('saved_delivery_address');
+    }
+    
+    // Also clear cart via API call to be extra sure
+    if (typeof $ !== 'undefined') {
+        $.ajax({
+            url: '{% url "customer_site:clear_cart" %}',
+            method: 'POST',
+            headers: { 
+                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() || '{{ csrf_token }}',
+                'Content-Type': 'application/json' 
+            },
+            data: JSON.stringify({}),
+            success: function(res) {
+                console.log('Cart cleared after successful payment');
+            },
+            error: function() {
+                console.log('Failed to clear cart via API, but payment was successful');
+            }
+        });
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

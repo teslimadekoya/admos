@@ -1,0 +1,729 @@
+{% extends 'customer_site/base.html' %}
+{% load static %}
+
+{% block title %}Profile - Admos Place{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Profile Page Styles */
+.profile-container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 60px 64px;
+}
+
+.profile-title {
+    align-self: stretch;
+    color: var(--Text-Primary, #1C1B1C);
+    text-align: center;
+    font-family: "DM Sans";
+    font-size: 36px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: 125%; /* 45px */
+    letter-spacing: 0.18px;
+    margin-bottom: 60px;
+}
+
+.profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    width: 100%;
+}
+
+.profile-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.profile-label {
+    align-self: stretch;
+    color: var(--Text-Primary, #1C1B1C);
+    font-family: "DM Sans";
+    font-size: 20px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: 130%; /* 26px */
+    letter-spacing: -0.1px;
+}
+
+.profile-input {
+    display: flex;
+    height: 48px;
+    padding: 12px 16px;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border-radius: var(--Border-Radius-12, 12px);
+    border: 1px solid var(--Light-Stroke-2, #DCDBDC);
+    background: var(--White, #FFF);
+    color: var(--Text-Primary, #1C1B1C);
+    font-family: "DM Sans";
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 150%; /* 24px */
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.profile-input:hover {
+    border-color: #DCDBDC;
+}
+
+.profile-input:focus {
+    outline: none;
+    border-color: #DCDBDC;
+}
+
+.profile-input::placeholder {
+    color: var(--Text-Secondary, #474547);
+}
+
+.profile-value {
+    align-self: stretch;
+    color: var(--Text-Secondary, #474547);
+    font-family: "DM Sans";
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 150%; /* 24px */
+    padding: 12px 0;
+    min-height: 24px;
+}
+
+.profile-textarea {
+    display: flex;
+    min-height: 80px;
+    padding: 12px 16px;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    border-radius: var(--Border-Radius-12, 12px);
+    border: 1px solid var(--Light-Stroke-2, #DCDBDC);
+    background: var(--White, #FFF);
+    color: var(--Text-Primary, #1C1B1C);
+    font-family: "DM Sans";
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 150%; /* 24px */
+    resize: vertical;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.profile-textarea:hover {
+    border-color: #DCDBDC;
+}
+
+.profile-textarea:focus {
+    outline: none;
+    border-color: #DCDBDC;
+}
+
+.profile-textarea::placeholder {
+    color: var(--Text-Secondary, #474547);
+}
+
+.field-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.edit-icon {
+    position: absolute;
+    right: 16px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    color: var(--Text-Secondary, #474547);
+    transition: color 0.3s ease;
+}
+
+.edit-icon:hover {
+    color: var(--Admos-700, #C41115);
+}
+
+
+.logout-section {
+    margin-top: 32px;
+    padding-top: 0;
+}
+
+.logout-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #99969A;
+    text-decoration: none;
+    font-family: "DM Sans";
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 150%;
+    transition: color 0.3s ease;
+    padding: 8px 0;
+}
+
+.logout-link:hover {
+    color: #7A777A;
+}
+
+.logout-icon {
+    width: 24px;
+    height: 24px;
+}
+
+/* Loading state */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Success/Error messages */
+.message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-family: "DM Sans";
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Loading state */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--Admos-700, #C41115);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-state p {
+    color: var(--Text-Secondary, #474547);
+    font-family: "DM Sans";
+    font-size: 16px;
+    font-weight: 400;
+    margin: 0;
+}
+
+/* Notification Styles (like cart notifications) */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 16px 20px;
+    z-index: 10000;
+    transform: translateX(calc(100% + 20px));
+    transition: transform 0.3s ease;
+    max-width: 400px;
+    border-left: 4px solid;
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification-success {
+    border-left-color: #28a745;
+}
+
+.notification-error {
+    border-left-color: #dc3545;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: "DM Sans", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.notification-content i {
+    font-size: 16px;
+}
+
+.notification-success .notification-content i {
+    color: #28a745;
+}
+
+.notification-error .notification-content i {
+    color: #dc3545;
+}
+
+.notification-content span {
+    color: #1C1B1C;
+    line-height: 1.4;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .profile-container {
+        padding: 20px 12px;
+    }
+    
+    .profile-title {
+        font-size: 28px;
+        margin-bottom: 32px;
+    }
+    
+    .profile-label {
+        font-size: 18px;
+    }
+    
+    .profile-input,
+    .profile-textarea {
+        font-size: 16px;
+    }
+    
+    .profile-form {
+        gap: 24px;
+    }
+    
+    .notification {
+        right: 16px;
+        left: 16px;
+        max-width: none;
+        transform: translateY(-100%);
+    }
+    
+    .notification.show {
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <h1 class="profile-title">Profile</h1>
+    
+    <div id="message-container"></div>
+    
+    <!-- Loading state -->
+    <div id="loading-state" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Loading your profile...</p>
+    </div>
+    
+    <!-- Profile form (hidden initially) -->
+    <form class="profile-form" id="profile-form" style="display: none;">
+        {% csrf_token %}
+        
+        <div class="profile-field">
+            <label class="profile-label">First Name</label>
+            <div class="field-container">
+                <span class="profile-value" id="first_name_display">Loading...</span>
+                <input 
+                    type="text" 
+                    id="first_name" 
+                    name="first_name" 
+                    class="profile-input" 
+                    placeholder="Type your first name"
+                    style="display: none;"
+                >
+                <i class="fas fa-edit edit-icon" onclick="toggleEdit('first_name')"></i>
+            </div>
+        </div>
+        
+        <div class="profile-field">
+            <label class="profile-label">Last Name</label>
+            <div class="field-container">
+                <span class="profile-value" id="last_name_display">Loading...</span>
+                <input 
+                    type="text" 
+                    id="last_name" 
+                    name="last_name" 
+                    class="profile-input" 
+                    placeholder="Type your last name"
+                    style="display: none;"
+                >
+                <i class="fas fa-edit edit-icon" onclick="toggleEdit('last_name')"></i>
+            </div>
+        </div>
+        
+        <div class="profile-field">
+            <label class="profile-label">Email Address</label>
+            <div class="field-container">
+                <span class="profile-value" id="email_display">Loading...</span>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    class="profile-input" 
+                    placeholder="Type your email address"
+                    style="display: none;"
+                >
+                <i class="fas fa-edit edit-icon" onclick="toggleEdit('email')"></i>
+            </div>
+        </div>
+        
+        <div class="profile-field">
+            <label class="profile-label">Phone Number</label>
+            <div class="field-container">
+                <span class="profile-value" id="phone_number_display">Loading...</span>
+                <input 
+                    type="tel" 
+                    id="phone_number" 
+                    name="phone_number" 
+                    class="profile-input" 
+                    placeholder="Type your phone number"
+                    style="display: none;"
+                >
+                <i class="fas fa-edit edit-icon" onclick="toggleEdit('phone_number')"></i>
+            </div>
+        </div>
+        
+        <div class="profile-field">
+            <label class="profile-label">Delivery Address</label>
+            <div class="field-container">
+                <span class="profile-value" id="delivery_address_display">Loading...</span>
+                <textarea 
+                    id="delivery_address" 
+                    name="delivery_address" 
+                    class="profile-textarea" 
+                    placeholder="Type your delivery address"
+                    style="display: none;"
+                ></textarea>
+                <i class="fas fa-edit edit-icon" onclick="toggleEdit('delivery_address')"></i>
+            </div>
+        </div>
+        
+    </form>
+    
+    <div class="logout-section" id="logout-section" style="display: none;">
+        <a href="#" class="logout-link" onclick="showLogoutConfirm()">
+            <svg class="logout-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M14.9996 20.3996C15.331 20.3996 15.5996 20.131 15.5996 19.7996C15.5996 19.4682 15.331 19.1996 14.9996 19.1996H7.19961C5.87413 19.1996 4.79961 18.1251 4.79961 16.7996V7.19961C4.79961 5.87413 5.87413 4.79961 7.19961 4.79961H14.9996C15.331 4.79961 15.5996 4.53098 15.5996 4.19961C15.5996 3.86824 15.331 3.59961 14.9996 3.59961H7.19961C5.21139 3.59961 3.59961 5.21138 3.59961 7.19961V16.7996C3.59961 18.7878 5.21138 20.3996 7.19961 20.3996H14.9996ZM16.3753 7.37535C16.6097 7.14103 16.9896 7.14103 17.2239 7.37535L21.4239 11.5753C21.6582 11.8097 21.6582 12.1896 21.4239 12.4239L17.2239 16.6239C16.9896 16.8582 16.6097 16.8582 16.3753 16.6239C16.141 16.3896 16.141 16.0097 16.3753 15.7753L19.5511 12.5996H8.99961C8.66824 12.5996 8.39961 12.331 8.39961 11.9996C8.39961 11.6682 8.66824 11.3996 8.99961 11.3996H19.5511L16.3753 8.22387C16.141 7.98956 16.141 7.60966 16.3753 7.37535Z" fill="currentColor"/>
+            </svg>
+            Log Out
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Profile form functionality
+let isEditing = {};
+let userProfile = null;
+let originalValues = {};
+
+// Check authentication and load profile data
+async function loadProfile() {
+    const accessToken = localStorage.getItem('access_token');
+    
+    if (!accessToken) {
+        showMessage('Please log in to view your profile.', 'error');
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 2000);
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/accounts/profile/', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            userProfile = await response.json();
+            populateForm(userProfile);
+            showProfileForm();
+        } else if (response.status === 401) {
+            // Token expired or invalid
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            showMessage('Your session has expired. Please log in again.', 'error');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        } else {
+            throw new Error('Failed to load profile');
+        }
+    } catch (error) {
+        console.error('Profile load error:', error);
+        showMessage('Failed to load profile. Please try again.', 'error');
+    }
+}
+
+function populateForm(profile) {
+    // Store original values for comparison
+    originalValues = {
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        email: profile.email || '',
+        phone_number: profile.phone_number || '',
+        delivery_address: profile.delivery_address || ''
+    };
+    
+    // Populate display values
+    document.getElementById('first_name_display').textContent = profile.first_name || 'Not provided';
+    document.getElementById('last_name_display').textContent = profile.last_name || 'Not provided';
+    document.getElementById('email_display').textContent = profile.email || 'Not provided';
+    document.getElementById('phone_number_display').textContent = profile.phone_number || 'Not provided';
+    document.getElementById('delivery_address_display').textContent = profile.delivery_address || 'Not provided';
+    
+    // Populate input values (hidden initially)
+    document.getElementById('first_name').value = profile.first_name || '';
+    document.getElementById('last_name').value = profile.last_name || '';
+    document.getElementById('email').value = profile.email || '';
+    document.getElementById('phone_number').value = profile.phone_number || '';
+    document.getElementById('delivery_address').value = profile.delivery_address || '';
+}
+
+function showProfileForm() {
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('profile-form').style.display = 'flex';
+    document.getElementById('logout-section').style.display = 'block';
+    
+    // Initialize all fields as display mode (not editing)
+    const fields = ['first_name', 'last_name', 'email', 'phone_number', 'delivery_address'];
+    fields.forEach(fieldName => {
+        isEditing[fieldName] = false;
+    });
+}
+
+function validateField(fieldName, value) {
+    const field = document.getElementById(fieldName);
+    const trimmedValue = value.trim();
+    
+    if (fieldName === 'email' && trimmedValue !== '') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedValue)) {
+            field.style.borderColor = '#ff4757';
+            showMessage('Please enter a valid email address', 'error');
+            return false;
+        } else {
+            field.style.borderColor = '#DCDBDC';
+        }
+    }
+    
+    if (fieldName === 'phone_number' && trimmedValue !== '') {
+        const phoneRegex = /^0[789][01]\d{8}$/;
+        const cleanPhone = trimmedValue.replace(/\s+/g, '');
+        if (!phoneRegex.test(cleanPhone)) {
+            field.style.borderColor = '#ff4757';
+            showMessage('Please enter a valid 11-digit Nigerian phone number (e.g., 08012345678)', 'error');
+            return false;
+        } else {
+            field.style.borderColor = '#DCDBDC';
+        }
+    }
+    
+    return true;
+}
+
+function toggleEdit(fieldName) {
+    const field = document.getElementById(fieldName);
+    const display = document.getElementById(fieldName + '_display');
+    const icon = field.parentElement.querySelector('.edit-icon');
+    
+    if (isEditing[fieldName]) {
+        // Save the field - validate and save to backend
+        saveField(fieldName, field.value, display, icon);
+    } else {
+        // Enable editing - switch to input mode
+        field.value = display.textContent === 'Not provided' ? '' : display.textContent;
+        display.style.display = 'none';
+        field.style.display = 'block';
+        field.focus();
+        icon.className = 'fas fa-save edit-icon';
+        isEditing[fieldName] = true;
+        
+        // Add Enter key listener to save field
+        field.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveField(fieldName, field.value, display, icon);
+            }
+        });
+        
+        // Add real-time validation for email and phone fields
+        if (fieldName === 'email' || fieldName === 'phone_number') {
+            field.addEventListener('blur', function() {
+                validateField(fieldName, field.value);
+            });
+        }
+    }
+}
+
+async function saveField(fieldName, value, display, icon) {
+    // Get the field element
+    const field = document.getElementById(fieldName);
+    
+    // Validate the field first
+    if (fieldName === 'email' && value.trim() !== '') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value.trim())) {
+            showMessage('Please enter a valid email address', 'error');
+            return;
+        }
+    }
+    
+    if (fieldName === 'phone_number' && value.trim() !== '') {
+        const phoneRegex = /^0[789][01]\d{8}$/;
+        const cleanPhone = value.replace(/\s+/g, '').trim();
+        if (!phoneRegex.test(cleanPhone)) {
+            showMessage('Please enter a valid 11-digit Nigerian phone number (e.g., 08012345678)', 'error');
+            return;
+        }
+        value = cleanPhone; // Use the cleaned phone number
+    }
+    
+    // Show loading state on icon
+    icon.className = 'fas fa-spinner fa-spin edit-icon';
+    icon.style.pointerEvents = 'none';
+    
+    try {
+        // Get access token
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            throw new Error('Please log in to update your profile');
+        }
+        
+        // Prepare data for this specific field
+        const data = { [fieldName]: value };
+        
+        // Make API request
+        const response = await fetch('/api/accounts/profile/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Success - update display and switch back to edit mode
+            display.textContent = value || 'Not provided';
+            display.style.display = 'block';
+            field.style.display = 'none';
+            icon.className = 'fas fa-edit edit-icon';
+            isEditing[fieldName] = false;
+            
+            // Update original values
+            originalValues[fieldName] = value;
+            
+            showMessage(`${fieldName.replace('_', ' ')} updated successfully!`, 'success');
+        } else if (response.status === 401) {
+            // Token expired
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            showMessage('Your session has expired. Please log in again.', 'error');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        } else {
+            throw new Error(result.message || 'Failed to update profile');
+        }
+        
+    } catch (error) {
+        console.error('Field update error:', error);
+        showMessage(error.message || 'Failed to update field. Please try again.', 'error');
+        
+        // Reset icon on error
+        icon.className = 'fas fa-save edit-icon';
+    } finally {
+        icon.style.pointerEvents = 'auto';
+    }
+}
+
+
+function showMessage(message, type) {
+    // Create notification like cart messages
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    // Add to body
+    document.body.appendChild(notification);
+    
+    // Show notification with animation
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    // Auto-hide success messages after 5 seconds, error messages after 8 seconds
+    const hideDelay = type === 'success' ? 5000 : 8000;
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, hideDelay);
+}
+
+// Show logout confirmation modal
+function showLogoutConfirm() {
+    // Use the existing logout confirmation modal from base.html
+    if (typeof window.logout === 'function') {
+        window.logout();
+    } else {
+        // Fallback if the base template function isn't available
+        if (confirm('Are you sure you want to log out?')) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/';
+        }
+    }
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadProfile();
+});
+</script>
+{% endblock %}

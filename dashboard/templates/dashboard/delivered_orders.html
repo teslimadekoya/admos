@@ -1,0 +1,64 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Today's Delivered Orders - Admos Place{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+    <div class="page-header">
+        <h1>Today's Delivered Orders</h1>
+        <div class="header-controls">
+            <div class="sort-controls">
+                <label for="sort-select">Sort by:</label>
+                <select id="sort-select" onchange="changeSort(this.value)">
+                    <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>Most Recent</option>
+                    <option value="oldest" {% if current_sort == 'oldest' %}selected{% endif %}>Oldest First</option>
+                </select>
+            </div>
+            <a href="{% url 'dashboard:orders' %}" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i> Back to Active Orders
+            </a>
+            <a href="{% url 'dashboard:payments' %}" class="btn btn-primary">
+                <i class="fas fa-credit-card"></i> View Payment History
+            </a>
+        </div>
+        <div class="order-stats">
+            <div class="stat-card">
+                <span class="stat-number">{{ delivered_orders.count }}</span>
+                <span class="stat-label">Delivered Today</span>
+            </div>
+        </div>
+    </div>
+
+    {% if delivered_orders %}
+    <div class="order-section">
+        <div class="section-header">
+            <h2><i class="fas fa-check-circle"></i> Orders Delivered Today</h2>
+            <span class="count-badge">{{ delivered_orders.count }}</span>
+        </div>
+        
+        <div class="orders-grid">
+            {% for order in delivered_orders %}
+            <div class="order-card">
+                <div class="order-header">
+                    <span class="order-id">#{{ order.id }}</span>
+                    <span class="order-time">{{ order.updated_at|date:"g:i A" }}</span>
+                </div>
+                <div class="customer-info">
+                    <strong>{{ order.user.first_name }} {{ order.user.last_name|default:order.user.phone_number }}</strong>
+                </div>
+                <div class="order-total">₦ {{ order.total|floatformat:0 }}</div>
+                <div class="order-actions">
+                    <a href="{% url 'dashboard:order_details' order.id %}" class="btn btn-outline">View Details</a>
+                    <span class="status-badge status-completed">Delivered</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-check-circle"></i>
+        <h3>No orders delivered today</h3>
+        <p>Orders delivered today will appear here. For past delivered orders, check the <a href="{% url 'dashboard:payments' %}">Payment History</a>.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

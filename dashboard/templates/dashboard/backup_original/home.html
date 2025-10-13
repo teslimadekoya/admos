@@ -1,0 +1,696 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Dashboard - Admos Place{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+    <div class="page-header">
+        <h1>Dashboard</h1>
+    </div>
+
+    <!-- Dashboard Cards -->
+    <div class="dashboard-grid">
+        <a href="{% url 'dashboard:orders' %}" class="dashboard-card primary">
+            <div class="card-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="card-content">
+                <h3>Orders</h3>
+                <p>Manage customer orders and delivery</p>
+                <span class="card-badge notification-badge">{{ today_orders }}</span>
+            </div>
+        </a>
+
+        <a href="{% url 'dashboard:items' %}" class="dashboard-card">
+            <div class="card-icon">
+                <i class="fas fa-utensils"></i>
+            </div>
+            <div class="card-content">
+                <h3>Menu Items</h3>
+                <p>Add and manage food items</p>
+            </div>
+        </a>
+
+        <a href="{% url 'dashboard:payments' %}" class="dashboard-card">
+            <div class="card-icon">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <div class="card-content">
+                <h3>Payments</h3>
+                <p>View payment records</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Business Analytics Section -->
+    <div class="business-analytics-section">
+        
+        <div class="analytics-grid">
+            <!-- Revenue Analytics -->
+            <div class="analytics-card revenue-card">
+                <div class="card-header">
+                    <h3>Total Revenue</h3>
+                    <div class="card-filter">
+                        <select id="revenue-filter" onchange="updateRevenueAnalytics()">
+                            <option value="today" {% if revenue_filter == 'today' %}selected{% endif %}>Today</option>
+                            <option value="week" {% if revenue_filter == 'week' %}selected{% endif %}>This Week</option>
+                            <option value="month" {% if revenue_filter == 'month' %}selected{% endif %}>This Month</option>
+                            <option value="3months" {% if revenue_filter == '3months' %}selected{% endif %}>Last 3 Months</option>
+                            <option value="year" {% if revenue_filter == 'year' %}selected{% endif %}>This Year</option>
+                            <option value="lifetime" {% if revenue_filter == 'lifetime' %}selected{% endif %}>Lifetime</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="revenue-amount">₦{{ total_revenue|floatformat:0 }}</div>
+                    <div class="revenue-period">
+                        {% if revenue_filter == 'today' %}
+                            vs Yesterday
+                        {% elif revenue_filter == 'week' %}
+                            vs Last Week
+                        {% elif revenue_filter == 'month' %}
+                            vs Last Month
+                        {% elif revenue_filter == '3months' %}
+                            vs Previous 3 Months
+                        {% elif revenue_filter == 'year' %}
+                            vs Last Year
+                        {% elif revenue_filter == 'lifetime' %}
+                            All Time Revenue
+                        {% endif %}
+                    </div>
+                    <div class="growth-indicator {% if growth_percentage >= 0 %}positive{% else %}negative{% endif %}">
+                        <i class="fas fa-arrow-{% if growth_percentage >= 0 %}up{% else %}down{% endif %}"></i>
+                        <span>{{ growth_percentage|floatformat:1 }}%</span>
+                    </div>
+                    <!-- Revenue Chart -->
+                    <div class="card-chart">
+                        <canvas id="revenueChart"></canvas>
+                        <div id="revenueChartError" style="display: none; text-align: center; padding: 20px; color: #6b7280;">
+                            Chart loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Most Ordered Product -->
+            <div class="analytics-card most-ordered-card">
+                <div class="card-header">
+                    <h3>Most Ordered Product</h3>
+                    <div class="card-filter">
+                        <select id="products-filter" onchange="updateProductsAnalytics()">
+                            <option value="today" {% if products_filter == 'today' %}selected{% endif %}>Today</option>
+                            <option value="week" {% if products_filter == 'week' %}selected{% endif %}>This Week</option>
+                            <option value="month" {% if products_filter == 'month' %}selected{% endif %}>This Month</option>
+                            <option value="3months" {% if products_filter == '3months' %}selected{% endif %}>Last 3 Months</option>
+                            <option value="year" {% if products_filter == 'year' %}selected{% endif %}>This Year</option>
+                            <option value="lifetime" {% if products_filter == 'lifetime' %}selected{% endif %}>Lifetime</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-content">
+                    {% if most_ordered_products %}
+                        <div class="top-product">
+                            <div class="product-info">
+                                <span class="product-color-indicator" style="background-color: #3b82f6;"></span>
+                                <div class="product-name">{{ most_ordered_products.0.name }}</div>
+                            </div>
+                            <div class="product-orders">{{ most_ordered_products.0.total_orders }} orders</div>
+                        </div>
+                        {% if most_ordered_products|length > 1 %}
+                            <div class="other-products">
+                                {% for product in most_ordered_products|slice:"1:4" %}
+                                    <div class="product-item">
+                                        <div class="product-info">
+                                            <span class="product-color-indicator" style="background-color: {% cycle '#10b981' '#f59e0b' '#ef4444' '#8b5cf6' %}"></span>
+                                            <span class="product-name">{{ product.name }}</span>
+                                        </div>
+                                        <span class="product-count">{{ product.total_orders }}</span>
+                                    </div>
+                                {% endfor %}
+                                {% if others_count > 0 %}
+                                    <div class="product-item">
+                                        <div class="product-info">
+                                            <span class="product-color-indicator" style="background-color: #6b7280;"></span>
+                                            <span class="product-name">Others</span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        <!-- Products Chart -->
+                        <div class="card-chart">
+                            <canvas id="productsChart"></canvas>
+                            <div id="productsChartError" style="display: none; text-align: center; padding: 20px; color: #6b7280;">
+                                Chart loading...
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="no-data">No orders in this period</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.business-analytics-section {
+    margin-top: 3rem;
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.card-filter select {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 0.85rem;
+    color: #374151;
+    min-width: 100px;
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.analytics-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+.analytics-card.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.card-filter select {
+    transition: all 0.2s ease;
+}
+
+.card-filter select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #374151;
+    flex: 1;
+}
+
+.card-filter {
+    display: flex;
+    align-items: center;
+}
+
+.growth-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.growth-indicator.positive {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.growth-indicator.negative {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.revenue-amount {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.revenue-period {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.top-product {
+    margin-bottom: 1rem;
+}
+
+.product-name {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.product-orders {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.other-products {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1rem;
+}
+
+.product-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.product-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.product-color-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.product-item .product-name {
+    color: #374151;
+    font-weight: 500;
+}
+
+.product-item .product-count {
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.no-data {
+    color: #6b7280;
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+}
+
+.card-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #3b82f6;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.dashboard-card {
+    position: relative;
+}
+
+.card-chart {
+    position: relative;
+    height: 200px;
+    width: 100%;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.card-chart canvas {
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+// Chart data from Django
+const chartData = {{ chart_data|safe }};
+
+console.log('Chart data:', chartData);
+
+// Ensure we have valid data
+if (!chartData || !chartData.revenue_chart || !chartData.products_chart) {
+    console.error('Invalid chart data structure');
+    chartData = {
+        revenue_chart: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            data: [1000, 1500, 2000, 1800, 2200, 2500, 3000],
+            colors: ['#3b82f6'] * 7
+        },
+        products_chart: {
+            labels: ['Cheeseburger', 'Chicken Wings', 'Beef Stew', 'Margherita Pizza'],
+            data: [8, 7, 7, 4],
+            colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
+        }
+    };
+} else {
+    console.log('Using real chart data');
+    console.log('Revenue chart data:', chartData.revenue_chart.data);
+    console.log('Revenue chart max:', Math.max(...chartData.revenue_chart.data));
+}
+
+// Check if Chart.js is loaded
+if (typeof Chart === 'undefined') {
+    console.error('Chart.js is not loaded!');
+} else {
+    console.log('Chart.js is loaded successfully');
+}
+
+// Revenue Chart
+const revenueCanvas = document.getElementById('revenueChart');
+const revenueError = document.getElementById('revenueChartError');
+if (!revenueCanvas) {
+    console.error('Revenue chart canvas not found!');
+    if (revenueError) revenueError.style.display = 'block';
+} else {
+    console.log('Revenue chart canvas found');
+    try {
+        const revenueCtx = revenueCanvas.getContext('2d');
+        window.revenueChart = new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+        labels: chartData.revenue_chart.labels,
+        datasets: [{
+            label: 'Revenue (₦)',
+            data: chartData.revenue_chart.data,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return '₦' + context.parsed.y.toLocaleString();
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        if (value >= 1000) {
+                            return '₦' + (value / 1000).toFixed(1) + 'k';
+                        } else {
+                            return '₦' + value;
+                        }
+                    },
+                    font: {
+                        size: 10
+                    }
+                },
+                grid: {
+                    color: '#f3f4f6'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    font: {
+                        size: 10
+                    }
+                }
+            }
+        }
+    }
+    });
+    console.log('Revenue chart created successfully');
+    } catch (error) {
+        console.error('Error creating revenue chart:', error);
+        if (revenueError) {
+            revenueError.textContent = 'Chart failed to load';
+            revenueError.style.display = 'block';
+        }
+    }
+}
+
+// Products Chart
+const productsCanvas = document.getElementById('productsChart');
+const productsError = document.getElementById('productsChartError');
+if (!productsCanvas) {
+    console.error('Products chart canvas not found!');
+    if (productsError) productsError.style.display = 'block';
+} else {
+    console.log('Products chart canvas found');
+    try {
+        const productsCtx = productsCanvas.getContext('2d');
+        window.productsChart = new Chart(productsCtx, {
+    type: 'doughnut',
+    data: {
+        labels: chartData.products_chart.labels,
+        datasets: [{
+            data: chartData.products_chart.data,
+            backgroundColor: chartData.products_chart.colors,
+            borderColor: '#ffffff',
+            borderWidth: 2,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed;
+                        return label + ': ' + value + ' orders';
+                    }
+                }
+            }
+        }
+    }
+    });
+    console.log('Products chart created successfully');
+    } catch (error) {
+        console.error('Error creating products chart:', error);
+        if (productsError) {
+            productsError.textContent = 'Chart failed to load';
+            productsError.style.display = 'block';
+        }
+    }
+}
+
+function updateRevenueAnalytics() {
+    const revenueFilter = document.getElementById('revenue-filter').value;
+    const productsFilter = document.getElementById('products-filter').value;
+    updateAnalyticsData(revenueFilter, productsFilter);
+}
+
+function updateProductsAnalytics() {
+    const revenueFilter = document.getElementById('revenue-filter').value;
+    const productsFilter = document.getElementById('products-filter').value;
+    updateAnalyticsData(revenueFilter, productsFilter);
+}
+
+function updateAnalyticsData(revenueFilter, productsFilter) {
+    // Show loading indicator
+    showLoadingIndicator();
+    
+    // Create URL with filter parameters
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('revenue_filter', revenueFilter);
+    currentUrl.searchParams.set('products_filter', productsFilter);
+    
+    // Make AJAX request
+    fetch(currentUrl.toString(), {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        // Parse the response HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Update revenue card data
+        updateRevenueCard(doc, revenueFilter);
+        
+        // Update products card data
+        updateProductsCard(doc, productsFilter);
+        
+        // Update charts
+        updateCharts(doc);
+        
+        // Update URL without page reload
+        window.history.pushState({}, '', currentUrl.toString());
+        
+        // Hide loading indicator
+        hideLoadingIndicator();
+    })
+    .catch(error => {
+        console.error('Error updating analytics:', error);
+        hideLoadingIndicator();
+        // Fallback to page reload if AJAX fails
+        window.location.href = currentUrl.toString();
+    });
+}
+
+function updateRevenueCard(doc, revenueFilter) {
+    // Update revenue amount
+    const revenueAmount = doc.querySelector('.revenue-amount');
+    if (revenueAmount) {
+        document.querySelector('.revenue-amount').textContent = revenueAmount.textContent;
+    }
+    
+    // Update growth percentage
+    const growthIndicator = doc.querySelector('.growth-indicator');
+    if (growthIndicator) {
+        const currentIndicator = document.querySelector('.growth-indicator');
+        currentIndicator.className = growthIndicator.className;
+        currentIndicator.innerHTML = growthIndicator.innerHTML;
+    }
+    
+    // Update revenue period text
+    const revenuePeriod = doc.querySelector('.revenue-period');
+    if (revenuePeriod) {
+        document.querySelector('.revenue-period').textContent = revenuePeriod.textContent;
+    }
+}
+
+function updateProductsCard(doc, productsFilter) {
+    // Update top product
+    const topProduct = doc.querySelector('.top-product');
+    if (topProduct) {
+        const currentTopProduct = document.querySelector('.top-product');
+        if (currentTopProduct) {
+            currentTopProduct.innerHTML = topProduct.innerHTML;
+        }
+    }
+    
+    // Update other products
+    const otherProducts = doc.querySelector('.other-products');
+    if (otherProducts) {
+        const currentOtherProducts = document.querySelector('.other-products');
+        if (currentOtherProducts) {
+            currentOtherProducts.innerHTML = otherProducts.innerHTML;
+        }
+    }
+}
+
+function updateCharts(doc) {
+    // Get new chart data from the response
+    const scriptTags = doc.querySelectorAll('script');
+    let newChartData = null;
+    
+    scriptTags.forEach(script => {
+        if (script.textContent.includes('chartData')) {
+            try {
+                const match = script.textContent.match(/const chartData = ({.*?});/);
+                if (match) {
+                    newChartData = JSON.parse(match[1]);
+                }
+            } catch (e) {
+                console.error('Error parsing chart data:', e);
+            }
+        }
+    });
+    
+    if (newChartData) {
+        // Update revenue chart
+        if (window.revenueChart) {
+            window.revenueChart.data.labels = newChartData.revenue_chart.labels;
+            window.revenueChart.data.datasets[0].data = newChartData.revenue_chart.data;
+            window.revenueChart.update();
+        }
+        
+        // Update products chart
+        if (window.productsChart) {
+            window.productsChart.data.labels = newChartData.products_chart.labels;
+            window.productsChart.data.datasets[0].data = newChartData.products_chart.data;
+            window.productsChart.data.datasets[0].backgroundColor = newChartData.products_chart.colors;
+            window.productsChart.update();
+        }
+    }
+}
+
+function showLoadingIndicator() {
+    // Add loading class to analytics cards
+    document.querySelectorAll('.analytics-card').forEach(card => {
+        card.classList.add('loading');
+    });
+}
+
+function hideLoadingIndicator() {
+    // Remove loading class from analytics cards
+    document.querySelectorAll('.analytics-card').forEach(card => {
+        card.classList.remove('loading');
+    });
+}
+</script>
+{% endblock %}

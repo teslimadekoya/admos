@@ -1,0 +1,157 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Edit Item - Admos Place{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+    <h1 class="page-title">Edit Item</h1>
+
+    <div class="card">
+        <form method="post" enctype="multipart/form-data" id="editItemForm">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="name">Item Name</label>
+                <input type="text" id="name" name="name" value="{{ item.name }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="price">Price (₦)</label>
+                <input type="number" id="price" name="price" step="0.01" value="{{ item.price }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="portions">Available Quantity</label>
+                <input type="number" id="portions" name="portions" min="0" value="{{ item.portions }}" placeholder="0">
+                <small class="form-help">Number of items available for ordering</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category" required>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if category.id == item.category.id %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="image">Upload New Image (optional)</label>
+                <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(this)">
+                <small class="form-help">Uploaded images take priority over URL images</small>
+                {% if item.image or item.image_url %}
+                    <div id="current-image-section" style="margin-top: 15px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                        <p style="margin: 0 0 10px 0; font-weight: 600; color: #495057;">Current Image:</p>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            {% if item.image %}
+                                <img id="current-image" src="{{ item.image.url }}" alt="{{ item.name }}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #dee2e6;">
+                                <div>
+                                    <p style="margin: 0 0 5px 0; font-size: 0.85rem; color: #28a745; font-weight: 500;">📁 Uploaded Image</p>
+                                </div>
+                            {% elif item.image_url %}
+                                <img id="current-image" src="{{ item.image_url }}" alt="{{ item.name }}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #dee2e6;" onerror="this.style.display='none'; document.getElementById('image-error').style.display='block';">
+                                <div id="image-error" style="display: none; color: #dc3545; font-size: 0.85rem;">❌ Image failed to load</div>
+                                <div>
+                                    <p style="margin: 0 0 5px 0; font-size: 0.85rem; color: #17a2b8; font-weight: 500;">🌐 URL Image</p>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <button type="button" onclick="removeCurrentImage()" style="background-color: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                    <i class="fas fa-trash-alt"></i> Remove Image
+                                </button>
+                                <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #6c757d;">Click to remove this image</p>
+                            </div>
+                        </div>
+                        <input type="hidden" id="remove_image" name="remove_image" value="0">
+                    </div>
+                {% endif %}
+                <div id="image-preview" style="display: none; margin-top: 15px; padding: 15px; background-color: #e8f5e8; border-radius: 8px; border: 1px solid #28a745;">
+                    <p style="margin: 0 0 10px 0; font-weight: 600; color: #155724;">New Image Preview:</p>
+                    <img id="preview-img" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #28a745;">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="image_url">Or Image URL (optional)</label>
+                <input type="url" id="image_url" name="image_url" value="{{ item.image_url }}" placeholder="https://example.com/image.jpg">
+            </div>
+            
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox" name="out_of_stock" id="out_of_stock_toggle" {% if item.portions == 0 %}checked{% endif %}> 
+                    <span class="toggle-text">Mark as Out of Stock</span>
+                    <small class="form-help">When enabled, quantity will be set to 0</small>
+                </label>
+            </div>
+            
+            <div class="action-bar">
+                <button type="submit" class="btn btn-primary">Update Item</button>
+                <a href="{% url 'dashboard:items' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<script>
+function removeCurrentImage() {
+    if (confirm('Are you sure you want to remove this image?')) {
+        // Set the hidden input to indicate image should be removed
+        document.getElementById('remove_image').value = '1';
+        
+        // Hide the current image section
+        const imageSection = document.getElementById('current-image-section');
+        if (imageSection) {
+            imageSection.style.display = 'none';
+        }
+        
+        // Clear the file input and hide preview
+        const fileInput = document.getElementById('image');
+        fileInput.value = '';
+        hideImagePreview();
+    }
+}
+
+function previewImage(input) {
+    const preview = document.getElementById('image-preview');
+    const previewImg = document.getElementById('preview-img');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        hideImagePreview();
+    }
+}
+
+function hideImagePreview() {
+    const preview = document.getElementById('image-preview');
+    if (preview) {
+        preview.style.display = 'none';
+    }
+}
+
+
+// Handle out of stock toggle
+document.addEventListener('DOMContentLoaded', function() {
+    const outOfStockToggle = document.getElementById('out_of_stock_toggle');
+    const portionsInput = document.getElementById('portions');
+    
+    function handleToggle() {
+        if (outOfStockToggle.checked) {
+            portionsInput.disabled = true;
+            portionsInput.style.opacity = '0.5';
+        } else {
+            portionsInput.disabled = false;
+            portionsInput.style.opacity = '1';
+        }
+    }
+    
+    outOfStockToggle.addEventListener('change', handleToggle);
+    handleToggle(); // Initialize on page load
+});
+</script>
+{% endblock %}

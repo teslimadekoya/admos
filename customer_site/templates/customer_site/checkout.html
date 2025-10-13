@@ -1,0 +1,1312 @@
+{% extends 'customer_site/base.html' %}
+{% load static %}
+
+{% block title %}Checkout - {{ restaurant_name }}{% endblock %}
+
+{% block extra_css %}
+<!-- Mock Address Autocomplete for Testing -->
+<!-- No API key needed - works immediately -->
+<style>
+/* Checkout Page Styles - Matching Design */
+body {
+    background: #ffffff !important;
+}
+
+.checkout-page {
+    background: #ffffff;
+    min-height: 100vh;
+    padding: 60px 0;
+}
+
+/* Make checkout container match nav-container exactly */
+.checkout-page .container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 64px;
+}
+
+.checkout-title {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: #1C1B1C;
+    text-align: center;
+    margin: 0 0 60px 0;
+}
+
+.checkout-card {
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+}
+
+/* Page title styling is handled by the base CSS */
+
+.checkout-section {
+    margin-bottom: 48px;
+}
+
+.checkout-section:last-child {
+    margin-bottom: 0;
+}
+
+.section-title {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1C1B1C;
+    margin: 0 0 24px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.required-badge {
+    font-size: 12px;
+    font-weight: 500;
+    color: #C41115;
+    padding: 2px 6px;
+    border: 1px solid #C41115;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+}
+
+.info-icon {
+    width: 16px;
+    height: 16px;
+    color: #C41115;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-size: 16px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.detail-value {
+    color: #1F2937;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+}
+
+.edit-btn {
+    background: none;
+    border: none;
+    color: #6B7280;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.edit-btn:hover {
+    background: #F3F4F6;
+    color: #374151;
+}
+
+.edit-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.save-btn, .cancel-btn {
+    background: none;
+    border: none;
+    color: #6B7280;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+}
+
+.save-btn:hover {
+    color: #10B981;
+    background: #F0FDF4;
+}
+
+.cancel-btn:hover {
+    color: #EF4444;
+    background: #FEF2F2;
+}
+
+.save-btn svg, .cancel-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+
+/* Search field container */
+.search-field-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    width: 100%;
+}
+
+.search-icon {
+    flex-shrink: 0;
+    color: #6B7280;
+    position: absolute;
+    left: 12px;
+    z-index: 1;
+}
+
+#delivery-address-input {
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    padding: 12px 12px 12px 44px;
+    font-size: 16px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    width: 100%;
+    background: #FFFFFF;
+    color: #1C1B1C;
+}
+
+#delivery-address-input:focus {
+    outline: none;
+    border-color: #C41115;
+    box-shadow: 0 0 0 3px rgba(196, 17, 21, 0.1);
+}
+
+#phone-number-input {
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 16px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    width: 100%;
+    max-width: 300px;
+    background: #FFFFFF;
+    color: #1C1B1C;
+}
+
+#phone-number-input:focus {
+    outline: none;
+    border-color: #C41115;
+    box-shadow: 0 0 0 3px rgba(196, 17, 21, 0.1);
+}
+
+
+
+
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: none;
+    color: #374151;
+    font-size: 16px;
+}
+
+.summary-row.total {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1C1B1C;
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    margin-top: 16px;
+}
+
+.payment-btn {
+    width: 100%;
+    background-color: #C41115;
+    color: white;
+    height: 48px;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    align-self: stretch;
+    border-radius: 12px;
+    border: none;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 24px;
+}
+
+.payment-btn:hover {
+    background-color: #A00E12;
+    transform: none;
+    box-shadow: none;
+}
+
+.payment-btn:disabled {
+    background: #9CA3AF;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Responsive Design - Match nav-container breakpoints exactly */
+@media (max-width: 1024px) {
+    .checkout-page .container {
+        padding: 0 32px;
+    }
+}
+
+@media (max-width: 768px) {
+    .checkout-page {
+        padding: 32px 0;
+    }
+    
+    .checkout-title {
+        font-size: 28px;
+        margin-bottom: 40px;
+    }
+    
+    .checkout-card {
+        padding: 0;
+    }
+}
+
+@media (max-width: 425px) {
+    .checkout-page .container {
+        padding: 0 16px;
+    }
+}
+
+@media (max-width: 375px) {
+    .checkout-page .container {
+        padding: 0 12px;
+    }
+}
+    
+    .checkout-section {
+        margin-bottom: 32px;
+    }
+    
+    .section-title {
+        font-size: 18px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="checkout-page">
+    <div class="container">
+        <h1 class="checkout-title">Checkout</h1>
+        
+        <div class="checkout-card">
+            
+            <!-- Delivery Details -->
+            <div class="checkout-section">
+                <h2 class="section-title">
+                    Delivery Information
+                    <span class="required-badge">
+                        Required
+                        <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="#C41115"/>
+                        </svg>
+                    </span>
+                </h2>
+                <div class="search-field-container">
+                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <circle cx="11" cy="11" r="8" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="m21 21-4.35-4.35" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                    <input type="text" id="delivery-address-input" placeholder="Search for your delivery location..." value="">
+                </div>
+            </div>
+
+            <!-- Contact Details -->
+            <div class="checkout-section">
+                <h2 class="section-title">
+                    Contact Details
+                    <span class="required-badge">
+                        Required
+                        <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="#C41115"/>
+                        </svg>
+                    </span>
+                </h2>
+                <div class="detail-row">
+                    <span class="detail-label">Phone Number</span>
+                    <div class="detail-value">
+                        <span id="phone-number-display">{{ user.phone_number|default:"" }}</span>
+                        <input type="tel" id="phone-number-input" value="{{ user.phone_number|default:"" }}" style="display: none;" placeholder="Enter phone number (e.g., 08012345678)">
+                        <button class="edit-btn" id="edit-phone-btn" onclick="editPhone()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button class="save-btn" id="save-phone-btn" onclick="savePhone()" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 6L9 17l-5-5"></path>
+                            </svg>
+                        </button>
+                        <button class="cancel-btn" id="cancel-phone-btn" onclick="cancelEditPhone()" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price Summary -->
+            <div class="checkout-section">
+                <h2 class="section-title">Price Summary</h2>
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span>₦{{ subtotal|floatformat:0 }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Service Charge:</span>
+                    <span>₦{{ service_charge|floatformat:0 }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Tax:</span>
+                    <span id="vat-display">₦{{ vat_amount|floatformat:0 }}</span>
+                </div>
+                <div class="summary-row delivery-fee">
+                    <span>Delivery:</span>
+                    <span id="delivery-fee-display">₦0</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total:</span>
+                    <span>₦{{ total|floatformat:0 }}</span>
+                </div>
+    <button class="payment-btn" onclick="validateAndMakePayment()">
+                    Make Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+// Mock autocomplete functionality
+let mockAutocomplete = false;
+
+function initAutocomplete() {
+    if (mockAutocomplete) return;
+    
+    const input = document.getElementById('delivery-address-input');
+    if (!input) return;
+    
+    // Mock Lagos addresses
+    const mockAddresses = [
+        "15A Layi Ajayi Street, Amuwo Odofin, Lagos",
+        "25 Victoria Island, Lagos",
+        "10 Ikeja GRA, Lagos",
+        "8 Surulere, Lagos",
+        "12 Lekki Phase 1, Lagos",
+        "30 Yaba, Lagos",
+        "5 Ikoyi, Lagos",
+        "18 Ajah, Lagos",
+        "22 Magodo, Lagos",
+        "7 Festac Town, Lagos",
+        "14 Anthony Village, Lagos",
+        "3 Maryland, Lagos",
+        "20 Opebi, Lagos",
+        "9 Gbagada, Lagos",
+        "11 Alaba International Market, Lagos"
+    ];
+    
+    // Create dropdown container
+    const dropdown = document.createElement('div');
+    dropdown.id = 'mock-autocomplete-dropdown';
+    dropdown.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #D1D5DB;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    `;
+    
+    // Insert dropdown after input
+    input.parentNode.appendChild(dropdown);
+    
+    // Input event listener
+    input.addEventListener('input', function() {
+        const value = this.value.toLowerCase();
+        
+        if (value.length < 2) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        
+        // Filter addresses
+        const filtered = mockAddresses.filter(addr => 
+            addr.toLowerCase().includes(value)
+        );
+        
+        // Always show dropdown if there are suggestions, even if user types something not in the list
+        if (filtered.length > 0) {
+            // Populate dropdown with suggestions
+            dropdown.innerHTML = filtered.map(addr => `
+                <div class="pac-item" style="
+                    padding: 12px 16px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #F3F4F6;
+                    font-size: 14px;
+                    color: #374151;
+                ">${addr}</div>
+            `).join('');
+            
+            dropdown.style.display = 'block';
+            
+            // Add hover effects
+            dropdown.querySelectorAll('.pac-item').forEach(item => {
+                item.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#F9FAFB';
+                });
+                item.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = 'white';
+                });
+                item.addEventListener('click', function() {
+                    input.value = this.textContent;
+                    dropdown.style.display = 'none';
+                    saveAddress();
+                });
+            });
+        } else {
+            // No suggestions, hide dropdown - user can type freely
+            dropdown.style.display = 'none';
+        }
+    });
+    
+    // Add Enter key functionality
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            dropdown.style.display = 'none';
+            saveAddress();
+            // Blur the input to remove focus and return to default styling
+            input.blur();
+        }
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+    
+    mockAutocomplete = true;
+}
+
+// Address input handling
+function saveAddress() {
+    const input = document.getElementById('delivery-address-input');
+    const newAddress = input.value.trim();
+    
+    // Always save to localStorage (even if empty)
+    localStorage.setItem('checkout_delivery_address', newAddress);
+    
+    if (newAddress) {
+        // Show success notification for non-empty addresses
+        showNotification('Delivery address updated successfully!', 'success');
+        
+        // Visual feedback - change input appearance to show it's saved
+        input.style.borderColor = '#10B981';
+        input.style.backgroundColor = '#F0FDF4';
+        
+        // Reset styling after 2 seconds
+        setTimeout(() => {
+            input.style.borderColor = '#D1D5DB';
+            input.style.backgroundColor = '#FFFFFF';
+        }, 2000);
+    } else {
+        // Show notification for cleared addresses
+        showNotification('Delivery address cleared', 'success');
+        
+        // Visual feedback for clearing
+        input.style.borderColor = '#6B7280';
+        input.style.backgroundColor = '#F9FAFB';
+        
+        // Reset styling after 2 seconds
+        setTimeout(() => {
+            input.style.borderColor = '#D1D5DB';
+            input.style.backgroundColor = '#FFFFFF';
+        }, 2000);
+    }
+    
+    // Check required badges
+    checkRequiredBadges();
+}
+
+function editPhone() {
+    const display = document.getElementById('phone-number-display');
+    const input = document.getElementById('phone-number-input');
+    const editBtn = document.getElementById('edit-phone-btn');
+    const saveBtn = document.getElementById('save-phone-btn');
+    const cancelBtn = document.getElementById('cancel-phone-btn');
+    
+    display.style.display = 'none';
+    input.style.display = 'block';
+    editBtn.style.display = 'none';
+    saveBtn.style.display = 'flex';
+    cancelBtn.style.display = 'flex';
+    
+    // Reset border color when starting to edit
+    input.style.borderColor = '#D1D5DB';
+    
+    // Add input restrictions (only digits, max 11 characters)
+    input.addEventListener('input', function(e) {
+        // Remove any non-digit characters
+        let value = e.target.value.replace(/\D/g, '');
+        
+        // Limit to 11 characters
+        if (value.length > 11) {
+            value = value.substring(0, 11);
+        }
+        
+        e.target.value = value;
+    });
+    
+    // Add real-time validation (exactly like profile page)
+    input.addEventListener('blur', function() {
+        validatePhoneField(input.value);
+    });
+    
+    // Add real-time required badge checking
+    input.addEventListener('input', function() {
+        checkRequiredBadges();
+    });
+    
+    // Add Enter key functionality
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            savePhone();
+        }
+    });
+    
+    input.focus();
+    input.select();
+}
+
+function validatePhoneField(value) {
+    const input = document.getElementById('phone-number-input');
+    const trimmedValue = value.trim();
+    
+    if (trimmedValue === '') {
+        input.style.borderColor = '#D1D5DB';
+        return true;
+    }
+    
+    const phoneRegex = /^0[789][01]\d{8}$/;
+    const cleanPhone = trimmedValue.replace(/\s+/g, '');
+    
+    if (!phoneRegex.test(cleanPhone)) {
+        input.style.borderColor = '#ff4757';
+        showNotification('Please enter a valid 11-digit Nigerian phone number (e.g., 08012345678)', 'error');
+        return false;
+    } else {
+        input.style.borderColor = '#D1D5DB';
+        return true;
+    }
+}
+
+function savePhone() {
+    const display = document.getElementById('phone-number-display');
+    const input = document.getElementById('phone-number-input');
+    const editBtn = document.getElementById('edit-phone-btn');
+    const saveBtn = document.getElementById('save-phone-btn');
+    const cancelBtn = document.getElementById('cancel-phone-btn');
+    
+    let value = input.value.trim();
+    
+    // Validate the field first (exactly like profile page)
+    if (value !== '') {
+        const phoneRegex = /^0[789][01]\d{8}$/;
+        const cleanPhone = value.replace(/\s+/g, '').trim();
+        if (!phoneRegex.test(cleanPhone)) {
+            showNotification('Please enter a valid 11-digit Nigerian phone number (e.g., 08012345678)', 'error');
+            return;
+        }
+        value = cleanPhone; // Use the cleaned phone number (exactly like profile)
+    }
+    // Allow empty phone numbers (clearing the field)
+    
+    // Save the cleaned phone number
+    display.textContent = value;
+    
+    // Show appropriate notification
+    if (value) {
+        showNotification('Phone number updated!', 'success');
+    } else {
+        showNotification('Phone number cleared', 'success');
+    }
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('checkout_phone_number', value);
+    
+    display.style.display = 'block';
+    input.style.display = 'none';
+    editBtn.style.display = 'flex';
+    saveBtn.style.display = 'none';
+    cancelBtn.style.display = 'none';
+    
+    // Check if required badges should be hidden
+    checkRequiredBadges();
+}
+
+function cancelEditPhone() {
+    const display = document.getElementById('phone-number-display');
+    const input = document.getElementById('phone-number-input');
+    const editBtn = document.getElementById('edit-phone-btn');
+    const saveBtn = document.getElementById('save-phone-btn');
+    const cancelBtn = document.getElementById('cancel-phone-btn');
+    
+    // Reset input to original value and border color
+    input.value = display.textContent;
+    input.style.borderColor = '#D1D5DB';
+    
+    // Remove event listeners to prevent memory leaks
+    input.removeEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 11) {
+            value = value.substring(0, 11);
+        }
+        e.target.value = value;
+    });
+    input.removeEventListener('blur', function() {
+        validatePhoneField(input.value);
+    });
+    input.removeEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            savePhone();
+        }
+    });
+    
+    display.style.display = 'block';
+    input.style.display = 'none';
+    editBtn.style.display = 'flex';
+    saveBtn.style.display = 'none';
+    cancelBtn.style.display = 'none';
+}
+
+async function calculateDeliveryFee(deliveryAddress) {
+    try {
+        const response = await fetch('/api/store/delivery-fee/calculate/', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ delivery_address: deliveryAddress }),
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            return { success: true, delivery_fee: data.delivery_fee, distance_km: data.distance_km };
+        } else {
+            console.error('Delivery fee calculation failed:', response.status);
+            return { success: false, delivery_fee: 0 }; // Fallback to 0
+        }
+    } catch (error) {
+        console.error('Error calculating delivery fee:', error);
+        return { success: false, delivery_fee: 0 }; // Fallback to 0
+    }
+}
+
+async function updateDeliveryFee() {
+    const deliveryAddress = document.getElementById('delivery-address-input').value.trim();
+    
+    // Get subtotal from cart data instead of parsing from page
+    let subtotal = 0;
+    try {
+        const cartData = await getCartData();
+        if (cartData && cartData.cart_items) {
+            subtotal = cartData.cart_items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        }
+    } catch (error) {
+        console.error('Error getting cart data:', error);
+        // Fallback to parsing from page
+        const subtotalElement = document.querySelector('.summary-row:first-child span:last-child');
+        if (subtotalElement) {
+            const subtotalText = subtotalElement.textContent.replace('₦', '').replace(/,/g, '');
+            subtotal = parseFloat(subtotalText) || 0;
+        }
+    }
+    
+    console.log('updateDeliveryFee called:', { 
+        deliveryAddress, 
+        subtotal 
+    });
+    
+    if (!deliveryAddress) {
+        // Reset to 0 if no address
+        updateSummaryDisplay(subtotal, 0, {{ service_charge }});
+        return;
+    }
+
+    const result = await calculateDeliveryFee(deliveryAddress);
+    if (result.success) {
+        updateSummaryDisplay(subtotal, result.delivery_fee, {{ service_charge }});
+    } else {
+        updateSummaryDisplay(subtotal, result.delivery_fee, {{ service_charge }});
+    }
+}
+
+function updateSummaryDisplay(subtotal, deliveryFee, serviceCharge) {
+    // Calculate VAT using dynamic percentage from server
+    const vatPercentage = {{ vat_percentage }};
+    const vatAmount = subtotal * (vatPercentage / 100);
+    const total = subtotal + serviceCharge + vatAmount + deliveryFee;
+    
+    console.log('updateSummaryDisplay called with:', { subtotal, deliveryFee, serviceCharge, vatAmount, total });
+    
+    // Update VAT display
+    const vatElement = document.getElementById('vat-display');
+    if (vatElement) {
+        const roundedVat = Math.round(vatAmount);
+        vatElement.textContent = `₦${roundedVat.toLocaleString()}`;
+        console.log('VAT updated to:', vatElement.textContent);
+    } else {
+        console.error('VAT element not found!');
+    }
+    
+    // Update delivery fee display (round to nearest 100)
+    const deliveryFeeElement = document.getElementById('delivery-fee-display');
+    if (deliveryFeeElement) {
+        const roundedDeliveryFee = Math.round(deliveryFee / 100) * 100;
+        deliveryFeeElement.textContent = `₦${roundedDeliveryFee.toLocaleString()}`;
+    }
+    
+    // Update total display (no rounding)
+    const totalElement = document.querySelector('.summary-row.total span:last-child');
+    if (totalElement) {
+        totalElement.textContent = `₦${Math.round(total).toLocaleString()}`;
+    }
+}
+
+function clearDeliveryData() {
+    // Clear delivery address input
+    const deliveryAddressInput = document.getElementById('delivery-address-input');
+    if (deliveryAddressInput) {
+        deliveryAddressInput.value = '';
+    }
+    
+    // Clear saved delivery address from localStorage
+    localStorage.removeItem('checkout_delivery_address');
+    
+    // Reset delivery fee to 0
+    updateDeliveryFee();
+}
+
+async function makePayment() {
+    // Show loading state
+    const paymentBtn = document.querySelector('.checkout-btn');
+    const originalText = paymentBtn ? paymentBtn.textContent : 'Make Payment';
+    
+    try {
+        if (paymentBtn) {
+            paymentBtn.textContent = 'Processing...';
+            paymentBtn.disabled = true;
+        }
+        
+        // Get cart data
+        const cartData = await getCartData();
+        console.log('Cart data:', JSON.stringify(cartData, null, 2));
+        if (!cartData || !cartData.bags || cartData.bags.length === 0) {
+            showNotification('Your cart is empty!', 'error');
+            resetPaymentButton(paymentBtn, originalText);
+            return;
+        }
+        
+        // Get delivery details
+        const deliveryAddress = document.getElementById('delivery-address-input').value.trim();
+        const phoneDisplay = document.getElementById('phone-number-display');
+        const phoneNumber = phoneDisplay ? phoneDisplay.textContent.trim() : '';
+        
+        // Calculate current delivery fee
+        const deliveryFeeResult = await calculateDeliveryFee(deliveryAddress);
+        const currentDeliveryFee = deliveryFeeResult.success ? deliveryFeeResult.delivery_fee : 0;
+        
+        // Get the total from the checkout page display
+        const totalElement = document.querySelector('.summary-row.total span:last-child');
+        const checkoutTotal = totalElement ? parseFloat(totalElement.textContent.replace('₦', '').replace(',', '')) : null;
+        
+        if (!checkoutTotal) {
+            showNotification('Unable to get total amount. Please refresh the page.', 'error');
+            resetPaymentButton(paymentBtn, originalText);
+            return;
+        }
+        
+        // Create order first with dynamic delivery fee
+        const orderResponse = await createOrder(cartData, deliveryAddress, phoneNumber, currentDeliveryFee);
+        if (!orderResponse.success) {
+            if (orderResponse.error && orderResponse.error.includes('Authentication failed')) {
+                showNotification('Your session has expired. Please log in again.', 'error');
+                // Clear tokens and redirect to login
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                setTimeout(() => {
+                    window.location.href = '{% url "customer_site:homepage" %}';
+                }, 2000);
+            } else {
+                showNotification(orderResponse.error || 'Failed to create order', 'error');
+            }
+            resetPaymentButton(paymentBtn, originalText);
+            return;
+        }
+        
+        // Use the checkout page total directly for Paystack (what user sees is what they pay)
+        console.log('=== PAYMENT TOTAL DEBUG ===');
+        console.log('Checkout page total:', checkoutTotal);
+        console.log('Order creation total:', orderResponse.total_amount);
+        console.log('Total difference:', Math.abs(checkoutTotal - orderResponse.total_amount));
+        console.log('Using checkout page total for payment (what user sees):', checkoutTotal);
+        console.log('=== END PAYMENT TOTAL DEBUG ===');
+        
+        // Initialize payment with checkout page total (what user actually sees)
+        const paymentResponse = await initializePayment(checkoutTotal);
+        if (!paymentResponse.success) {
+            if (paymentResponse.error && paymentResponse.error.includes('Authentication failed')) {
+                showNotification('Your session has expired. Please log in again.', 'error');
+                // Clear tokens and redirect to login
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                setTimeout(() => {
+                    window.location.href = '{% url "customer_site:homepage" %}';
+                }, 2000);
+            } else {
+                showNotification(paymentResponse.error || 'Failed to initialize payment', 'error');
+            }
+            resetPaymentButton(paymentBtn, originalText);
+            return;
+        }
+        
+        // Redirect to Paystack
+        window.location.href = paymentResponse.data.authorization_url;
+        
+    } catch (error) {
+        console.error('Payment error:', error);
+        showNotification('An error occurred during payment processing', 'error');
+        resetPaymentButton(paymentBtn, originalText);
+    }
+}
+
+function resetPaymentButton(button, originalText) {
+    if (button) {
+        button.textContent = originalText;
+        button.disabled = false;
+    }
+}
+
+async function getCartData() {
+    try {
+        const response = await fetch('/api/get-cart/', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching cart:', error);
+        return null;
+    }
+}
+
+async function refreshToken() {
+    try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+            throw new Error('No refresh token available');
+        }
+        
+        const response = await fetch('/api/token/refresh/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ refresh: refreshToken }),
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('access_token', data.access);
+            if (data.refresh) {
+                localStorage.setItem('refresh_token', data.refresh);
+            }
+            return true;
+        } else {
+            throw new Error('Token refresh failed');
+        }
+    } catch (error) {
+        console.error('Token refresh error:', error);
+        return false;
+    }
+}
+
+async function createOrder(cartData, deliveryAddress, phoneNumber, deliveryFee = 0) {
+    try {
+        // Calculate VAT using dynamic values from server
+        const serviceCharge = {{ service_charge }};
+        const vatPercentage = {{ vat_percentage }};
+        const subtotal = cartData.cart_items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const vatAmount = subtotal * (vatPercentage / 100);
+        
+        // Create order using cart items directly
+        const orderData = {
+            cart_items: cartData.cart_items,
+            delivery_address: deliveryAddress,
+            contact_phone: phoneNumber,
+            delivery_fee: deliveryFee,
+            service_charge: serviceCharge,
+            vat_percentage: vatPercentage,
+            vat_amount: vatAmount
+        };
+        
+        console.log('Creating order with cart items:', JSON.stringify(orderData, null, 2));
+        
+        // Use a custom endpoint that handles cart items directly
+        const response = await fetch('/api/create-order-from-cart/', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(orderData),
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            return { success: true, total_amount: data.total_amount };
+        } else if (response.status === 401) {
+            // Token expired, try to refresh
+            console.log('Token expired, attempting refresh...');
+            const refreshSuccess = await refreshToken();
+            if (refreshSuccess) {
+                // Retry the request with new token
+                const retryResponse = await fetch('/api/create-order-from-cart/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData),
+                });
+                
+                const retryData = await retryResponse.json();
+                if (retryResponse.ok) {
+                    return { success: true, total_amount: retryData.total_amount };
+                } else {
+                    return { success: false, error: 'Authentication failed. Please log in again.' };
+                }
+            } else {
+                return { success: false, error: 'Authentication failed. Please log in again.' };
+            }
+        } else {
+            console.error('Order creation error:', JSON.stringify(data, null, 2));
+            return { success: false, error: data.error || data.detail || 'Failed to create order' };
+        }
+    } catch (error) {
+        console.error('Error creating order:', error);
+        return { success: false, error: 'Network error while creating order' };
+    }
+}
+
+async function initializePayment(totalAmount, retryCount = 0) {
+    const maxRetries = 2;
+    
+    try {
+        const response = await fetch('/api/store/payments/initialize/', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                total_amount: totalAmount
+            }),
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            return { success: true, data: data };
+        } else if (response.status === 401) {
+            // Token expired, try to refresh
+            console.log('Token expired during payment initialization, attempting refresh...');
+            const refreshSuccess = await refreshToken();
+            if (refreshSuccess) {
+                // Retry the request with new token
+                const retryResponse = await fetch('/api/store/payments/initialize/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        total_amount: totalAmount
+                    }),
+                });
+                
+                const retryData = await retryResponse.json();
+                if (retryResponse.ok) {
+                    return { success: true, data: retryData };
+                } else {
+                    return { success: false, error: 'Authentication failed. Please log in again.' };
+                }
+            } else {
+                return { success: false, error: 'Authentication failed. Please log in again.' };
+            }
+        } else if (response.status >= 500 && response.status < 600) {
+            // Server errors - retry
+            if (retryCount < maxRetries) {
+                console.log(`Server error ${response.status}, retrying payment initialization (attempt ${retryCount + 1}/${maxRetries})...`);
+                await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1))); // Longer delay for server errors
+                return initializePayment(totalAmount, retryCount + 1);
+            } else {
+                console.error('Payment initialization failed after retries:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: data
+                });
+                return { success: false, error: data.error || 'Payment service is temporarily unavailable. Please try again later.' };
+            }
+        } else {
+            console.error('Payment initialization failed:', {
+                status: response.status,
+                statusText: response.statusText,
+                data: data
+            });
+            return { success: false, error: data.error || data.detail || 'Failed to initialize payment' };
+        }
+    } catch (error) {
+        console.error('Error initializing payment:', error);
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        
+        // Retry for network errors
+        if (retryCount < maxRetries && (error.name === 'TypeError' || error.message.includes('fetch'))) {
+            console.log(`Retrying payment initialization (attempt ${retryCount + 1}/${maxRetries})...`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+            return initializePayment(totalAmount, retryCount + 1);
+        }
+        
+        return { success: false, error: `Network error while initializing payment: ${error.message}` };
+    }
+}
+
+function validateAndMakePayment() {
+    // Get current values
+    const deliveryAddress = document.getElementById('delivery-address-input').value.trim();
+    const phoneNumber = document.getElementById('phone-number-display').textContent.trim();
+    
+    // Check if required fields are empty
+    if (!deliveryAddress || deliveryAddress === '') {
+        showNotification('Delivery address is required!', 'error');
+        return;
+    }
+    
+    if (!phoneNumber || phoneNumber === '') {
+        showNotification('Phone number is required!', 'error');
+        return;
+    }
+    
+    // If all validations pass, proceed with payment
+    makePayment();
+}
+
+function showNotification(message, type = 'success') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    
+    // Style the notification
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'error' ? '#DC2626' : '#10B981'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Function to check if required badges should be shown/hidden
+function checkRequiredBadges() {
+    const addressInput = document.getElementById('delivery-address-input');
+    const phoneDisplay = document.getElementById('phone-number-display');
+    const phoneInput = document.getElementById('phone-number-input');
+    
+    const hasAddress = addressInput.value.trim() !== '';
+    
+    // Check phone - use input field if it's visible (edit mode), otherwise use display
+    let hasPhone;
+    if (phoneInput && phoneInput.style.display !== 'none') {
+        // Phone input is visible (edit mode)
+        hasPhone = phoneInput.value.trim() !== '';
+    } else {
+        // Phone display is visible (normal mode)
+        hasPhone = phoneDisplay.textContent.trim() !== '';
+    }
+    
+    // Find the specific required badges for each section
+    const deliveryRequiredBadge = document.querySelector('.checkout-section:first-of-type .required-badge');
+    const contactRequiredBadge = document.querySelector('.checkout-section:nth-of-type(2) .required-badge');
+    
+    // Show/hide delivery required badge based on address
+    if (deliveryRequiredBadge) {
+        deliveryRequiredBadge.style.display = hasAddress ? 'none' : 'flex';
+    }
+    
+    // Show/hide contact required badge based on phone
+    if (contactRequiredBadge) {
+        contactRequiredBadge.style.display = hasPhone ? 'none' : 'flex';
+    }
+}
+
+
+// Function to load saved checkout data from localStorage
+function loadCheckoutData() {
+    // Don't load saved delivery address - force user to enter current address each time
+    // This prevents accidental delivery to old locations
+    
+    // Load saved phone number (always load, even if empty)
+    const savedPhone = localStorage.getItem('checkout_phone_number');
+    if (savedPhone !== null) {
+        document.getElementById('phone-number-display').textContent = savedPhone;
+    }
+}
+
+// Initialize delivery fee calculation on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear delivery address if coming from successful payment
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment_success') === 'true' || urlParams.get('clear_address') === 'true') {
+        clearDeliveryData();
+        // Remove the parameter from URL without page reload
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+    
+    // Add event listener to delivery address input for dynamic delivery fee calculation
+    const deliveryAddressInput = document.getElementById('delivery-address-input');
+    if (deliveryAddressInput) {
+        // Debounce the delivery fee calculation to avoid too many API calls
+        let deliveryFeeTimeout;
+        deliveryAddressInput.addEventListener('input', function() {
+            clearTimeout(deliveryFeeTimeout);
+            deliveryFeeTimeout = setTimeout(() => {
+                updateDeliveryFee();
+            }, 1000); // Wait 1 second after user stops typing
+        });
+        
+        // Also calculate on page load if address is already filled
+        if (deliveryAddressInput.value.trim()) {
+            updateDeliveryFee();
+        }
+    }
+});
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Load any saved checkout data
+    loadCheckoutData();
+    
+    // Initialize autocomplete immediately
+    initAutocomplete();
+    
+    // Set up event listeners for address input
+    const addressInput = document.getElementById('delivery-address-input');
+    addressInput.addEventListener('blur', saveAddress);
+    addressInput.addEventListener('input', checkRequiredBadges);
+    
+    // Set up event listeners for phone edit button
+    document.getElementById('edit-phone-btn').addEventListener('click', editPhone);
+    
+    // Set up event listeners for phone save button
+    document.getElementById('save-phone-btn').addEventListener('click', savePhone);
+    
+    // Set up event listeners for phone cancel button
+    document.getElementById('cancel-phone-btn').addEventListener('click', cancelEditPhone);
+    
+    // Check initial state of required badges
+    checkRequiredBadges();
+});
+</script>
+{% endblock %}

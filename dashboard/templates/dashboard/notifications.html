@@ -1,0 +1,41 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Notifications - Admos Place{% endblock %}
+{% block content %}
+<div class="dashboard-page">
+    <h1 class="page-title">Notifications</h1>
+
+    <div class="notification-list-card">
+        {% if notifications %}
+        <ul class="notification-list">
+            {% for notification in notifications %}
+            <li>
+                <div class="notification-icon">
+                    {% if "Payment" in notification.message %}
+                        <i class="fas fa-credit-card text-green"></i>
+                    {% elif "Delivered" in notification.message %}
+                        <i class="fas fa-check-circle text-green"></i>
+                    {% elif "On the Way" in notification.message %}
+                        <i class="fas fa-truck text-blue"></i>
+                    {% else %}
+                        <i class="fas fa-info-circle text-blue"></i>
+                    {% endif %}
+                </div>
+                <div class="notification-content">
+                    <a href="{% url 'dashboard:order_details' notification.order.id %}" class="notification-link">
+                        {{ notification.message }}
+                    </a>
+                    <span class="notification-time">{{ notification.order.created_at|timesince }} ago</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-bell-slash"></i>
+            <h3>No notifications</h3>
+            <p>You're all caught up! New notifications will appear here.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
